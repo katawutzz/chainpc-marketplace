@@ -6,9 +6,15 @@ import { WagmiProvider } from "wagmi";
 import { Layout } from "./components/Layout";
 import { AuthProvider } from "./hooks/useAuth";
 import { wagmiConfig } from "./lib/wagmi";
+import { CartPage } from "./pages/CartPage";
+import { CheckoutPage } from "./pages/CheckoutPage";
 import { ComingSoon, NotFound } from "./pages/ComingSoon";
 import { HomePage } from "./pages/HomePage";
+import { OrdersPage } from "./pages/OrdersPage";
+import { ProductFormPage } from "./pages/ProductFormPage";
 import { ProductPage } from "./pages/ProductPage";
+import { SellerCenter } from "./pages/SellerCenter";
+import { ShopPage } from "./pages/ShopPage";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -21,11 +27,13 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/product/:id", element: <ProductPage /> },
-      { path: "/shop/:address", element: <ComingSoon title="หน้าร้านของผู้ขาย" phase={6} /> },
-      { path: "/cart", element: <ComingSoon title="ตะกร้าสินค้า" phase={6} /> },
-      { path: "/checkout", element: <ComingSoon title="ชำระเงิน" phase={6} /> },
-      { path: "/orders", element: <ComingSoon title="คำสั่งซื้อของฉัน" phase={6} /> },
-      { path: "/seller/*", element: <ComingSoon title="ศูนย์ผู้ขาย" phase={6} /> },
+      { path: "/shop/:address", element: <ShopPage /> },
+      { path: "/cart", element: <CartPage /> },
+      { path: "/checkout", element: <CheckoutPage /> },
+      { path: "/orders", element: <OrdersPage /> },
+      { path: "/seller", element: <SellerCenter /> },
+      { path: "/seller/products/new", element: <ProductFormPage /> },
+      { path: "/seller/products/:id/edit", element: <ProductFormPage /> },
       { path: "/account", element: <ComingSoon title="บัญชีของฉัน" phase={7} /> },
       { path: "/admin", element: <ComingSoon title="Admin Panel" phase={7} /> },
       { path: "*", element: <NotFound /> },

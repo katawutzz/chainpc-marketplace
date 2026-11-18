@@ -245,7 +245,7 @@ function Hero() {
   const points = [
     { icon: "🔒", title: "เงินล็อกใน Smart Contract", text: "ผู้ขายได้เงินเมื่อคุณยืนยันว่าได้รับของแล้วเท่านั้น" },
     { icon: "↩️", title: "คืนเงินอัตโนมัติ", text: "ผู้ขายไม่ส่งของตามกำหนด กดขอเงินคืนได้ทันที" },
-    { icon: "⭐", title: "รีวิวที่แก้ไม่ได้", text: "คะแนนผู้ขายถูกบันทึกบนบล็อกเชน ไม่มีใครลบได้" },
+    { icon: "🚩", title: "มีคนกลางเมื่อมีปัญหา", text: "ของไม่ตรงปก แจ้งปัญหาให้ Admin ตัดสิน เงินยังล็อกอยู่จนกว่าจะจบ" },
   ];
   return (
     <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-navy-900 via-navy-800 to-sky-900 text-white shadow-sm">

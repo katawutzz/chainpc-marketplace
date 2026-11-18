@@ -1,4 +1,4 @@
-import { formatEther } from "viem";
+import { BaseError, ContractFunctionRevertedError, formatEther } from "viem";
 
 /** หมวดหมู่ (ลำดับตรงกับ enum Category ใน contract) */
 export const CATEGORIES = [
@@ -21,7 +21,7 @@ export const CONDITIONS = [
 export const ORDER_STATUS: Record<number, { label: string; tone: "info" | "warn" | "danger" | "ok" | "muted" }> = {
   1: { label: "ชำระเงินแล้ว · รอจัดส่ง", tone: "info" },
   2: { label: "จัดส่งแล้ว · รอยืนยัน", tone: "warn" },
-  3: { label: "มีข้อพิพาท", tone: "danger" },
+  3: { label: "แจ้งปัญหา · รอ Admin ตัดสิน", tone: "danger" },
   4: { label: "สำเร็จ", tone: "ok" },
   5: { label: "คืนเงินแล้ว", tone: "muted" },
 };
@@ -51,12 +51,27 @@ export function formatThaiDate(iso: string | null | undefined): string {
 
 /** ข้อความผิดพลาดจาก wagmi/viem → ข้อความภาษาไทยที่อ่านง่าย */
 export function friendlyError(err: unknown): string {
-  const e = err as { shortMessage?: string; message?: string; name?: string; cause?: { data?: { errorName?: string } } };
+  const e = err as { shortMessage?: string; message?: string; name?: string };
   const raw = `${e?.name ?? ""} ${e?.shortMessage ?? ""} ${e?.message ?? ""}`;
   if (/User rejected|User denied|rejected the request/i.test(raw)) return "คุณยกเลิกรายการใน MetaMask";
   if (/insufficient funds/i.test(raw)) return "ETH ในกระเป๋าไม่พอ (รวมค่า gas)";
-  const custom = e?.cause?.data?.errorName ?? raw.match(/reverted with the following reason:\s*\n?(\w+)/)?.[1];
+  let custom: string | undefined;
+  if (err instanceof BaseError) {
+    const revert = err.walk((x) => x instanceof ContractFunctionRevertedError);
+    if (revert instanceof ContractFunctionRevertedError) custom = revert.data?.errorName;
+  }
+  custom ??= raw.match(/reverted with the following reason:\s*\n?(\w+)/)?.[1];
   const map: Record<string, string> = {
+    NotProductSeller: "คุณไม่ใช่เจ้าของสินค้านี้",
+    NotOrderSeller: "คุณไม่ใช่ผู้ขายของคำสั่งซื้อนี้",
+    NotOrderBuyer: "คุณไม่ใช่ผู้ซื้อของคำสั่งซื้อนี้",
+    InvalidStatus: "สถานะคำสั่งซื้อเปลี่ยนไปแล้ว ลองโหลดหน้าใหม่",
+    AlreadyReviewed: "รีวิวคำสั่งซื้อนี้ไปแล้ว",
+    InvalidTitle: "ชื่อสินค้าต้องมี 1–100 ตัวอักษร (byte)",
+    InvalidPrice: "ราคาต้องมากกว่า 0",
+    InvalidStock: "จำนวนสต็อกต้องมากกว่า 0",
+    InvalidTracking: "เลขพัสดุต้องมี 1–64 ตัวอักษร",
+    CartTooLarge: "ตะกร้ามีสินค้าเกิน 20 รายการ",
     CannotBuyOwnProduct: "ซื้อสินค้าของตัวเองไม่ได้",
     InsufficientStock: "สินค้าในสต็อกไม่พอ",
     ProductUnavailable: "สินค้านี้ไม่เปิดขายแล้ว",

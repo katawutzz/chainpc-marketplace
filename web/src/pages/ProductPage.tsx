@@ -237,7 +237,7 @@ export function ProductPage() {
             <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-3 text-xs text-slate-600">
               <li>🔒 เงินถูกล็อกใน Smart Contract จนกว่าคุณจะยืนยันรับของ</li>
               <li>↩️ ผู้ขายไม่ส่งของตามกำหนด → ขอเงินคืนได้</li>
-              <li>⚖️ ของไม่ตรงปก → เปิดข้อพิพาทให้ Admin ตัดสิน</li>
+              <li>🚩 ของไม่ตรงปก → แจ้งปัญหาให้ Admin ช่วยตัดสิน</li>
             </ul>
           </div>
 

@@ -358,63 +358,34 @@ export type Database = {
         }
         Relationships: []
       }
-      review_comments: {
-        Row: {
-          comment: string
-          created_at: string
-          order_id: number
-        }
-        Insert: {
-          comment: string
-          created_at?: string
-          order_id: number
-        }
-        Update: {
-          comment?: string
-          created_at?: string
-          order_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "review_comments_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reviews: {
         Row: {
           buyer: string
-          comment_hash: string
+          comment: string | null
           created_at: string
           order_id: number
           rating: number
           seller: string
-          tx_hash: string
         }
         Insert: {
-          buyer: string
-          comment_hash: string
-          created_at: string
+          buyer?: string
+          comment?: string | null
+          created_at?: string
           order_id: number
           rating: number
           seller: string
-          tx_hash: string
         }
         Update: {
           buyer?: string
-          comment_hash?: string
+          comment?: string | null
           created_at?: string
           order_id?: number
           rating?: number
           seller?: string
-          tx_hash?: string
         }
         Relationships: [
           {
-            foreignKeyName: "reviews_order_id_fkey"
+            foreignKeyName: "reviews_v2_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: true
             referencedRelation: "orders"

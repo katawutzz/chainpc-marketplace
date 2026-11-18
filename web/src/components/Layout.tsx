@@ -4,6 +4,7 @@ import { shortAddress } from "../lib/format";
 import { CategoryBar } from "./CategoryBar";
 import { Header } from "./Header";
 import { NetworkBanner } from "./NetworkBanner";
+import { Toasts } from "./Toasts";
 
 export function Layout() {
   return (
@@ -29,6 +30,7 @@ export function Layout() {
           </a>
         </div>
       </footer>
+      <Toasts />
       <ScrollRestoration />
     </div>
   );
