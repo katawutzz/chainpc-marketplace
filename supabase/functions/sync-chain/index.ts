@@ -78,15 +78,6 @@ function check<T>(res: { data: T; error: unknown }, what: string): T {
   return res.data;
 }
 
-const blockTimeCache = new Map<bigint, string>();
-async function blockTime(blockNumber: bigint): Promise<string> {
-  const cached = blockTimeCache.get(blockNumber);
-  if (cached) return cached;
-  const block = await client.getBlock({ blockNumber });
-  const t = new Date(Number(block.timestamp) * 1000).toISOString();
-  blockTimeCache.set(blockNumber, t);
-  return t;
-}
 
 // ---------------------------------------------------------------------
 // อ่านสถานะจาก contract
@@ -151,12 +142,11 @@ async function readSeller(address: string) {
     functionName: "getSellerInfo",
     args: [address as Hex],
   });
+  // rating_sum / rating_count ไม่ sync จาก chain แล้ว — คำนวณจากตาราง reviews ใน Supabase (trigger)
   return {
     address,
     verified: s.verified,
     banned: s.banned,
-    rating_sum: Number(s.ratingSum),
-    rating_count: Number(s.ratingCount),
     synced_at: new Date().toISOString(),
   };
 }
@@ -192,7 +182,6 @@ async function processLogs(logs: any[], admin: string) {
   const productIds = new Set<bigint>();
   const orderIds = new Set<bigint>();
   const sellers = new Set<string>();
-  const reviews: Record<string, unknown>[] = [];
   const resolutions = new Map<bigint, { refund: boolean; note: string }>();
   const intents: NotifyIntent[] = [];
 
@@ -250,19 +239,7 @@ async function processLogs(logs: any[], admin: string) {
           data: { refundBuyer: a.refundBuyer, note: a.note },
         });
         break;
-      case "ReviewAdded":
-        orderIds.add(a.orderId);
-        sellers.add(lower(a.seller));
-        reviews.push({
-          order_id: Number(a.orderId),
-          seller: lower(a.seller),
-          buyer: lower(a.buyer),
-          rating: Number(a.rating),
-          comment_hash: a.commentHash,
-          created_at: await blockTime(log.blockNumber),
-          tx_hash: log.transactionHash,
-        });
-        break;
+      // ReviewAdded: รีวิวย้ายไปเก็บใน Supabase แล้ว (หน้าเว็บไม่เรียก leaveReview) — ไม่ sync
       case "SellerBanned":
       case "SellerVerified":
         sellers.add(lower(a.seller));
@@ -290,7 +267,6 @@ async function processLogs(logs: any[], admin: string) {
   if (products.length) check(await supabase.from("products").upsert(products), "upsert products");
   if (sellerRows.length) check(await supabase.from("sellers").upsert(sellerRows), "upsert sellers");
   if (orders.length) check(await supabase.from("orders").upsert(orders), "upsert orders");
-  if (reviews.length) check(await supabase.from("reviews").upsert(reviews), "upsert reviews");
 
   // 3) แจ้งเตือน (unique (tx_hash, log_index, recipient) → รันซ้ำไม่เกิดซ้ำ)
   const orderMap = new Map(orders.map((o) => [BigInt(o.id), o]));
@@ -319,7 +295,7 @@ async function processLogs(logs: any[], admin: string) {
     );
   }
 
-  return { products: products.length, orders: orders.length, sellers: sellerRows.length, reviews: reviews.length, notifications: notifications.length };
+  return { products: products.length, orders: orders.length, sellers: sellerRows.length, notifications: notifications.length };
 }
 
 // ---------------------------------------------------------------------
@@ -357,7 +333,7 @@ Deno.serve(async (req) => {
 
     const admin = await syncAdmins();
     const head = (await client.getBlockNumber()) - CONFIRMATIONS;
-    const totals = { logs: 0, products: 0, orders: 0, sellers: 0, reviews: 0, notifications: 0 };
+    const totals = { logs: 0, products: 0, orders: 0, sellers: 0, notifications: 0 };
     let chunks = 0;
 
     while (from <= head && chunks < MAX_CHUNKS_PER_RUN) {
@@ -373,7 +349,6 @@ Deno.serve(async (req) => {
       totals.products += r.products;
       totals.orders += r.orders;
       totals.sellers += r.sellers;
-      totals.reviews += r.reviews;
       totals.notifications += r.notifications;
 
       check(

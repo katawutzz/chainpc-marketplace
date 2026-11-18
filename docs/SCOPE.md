@@ -29,7 +29,7 @@
 1. สร้างตลาดซื้อขายที่**ใครก็ลงขายได้** โดยเงินของผู้ซื้อจะถูก**ล็อกไว้ใน Smart Contract (Escrow)** จนกว่าการซื้อขายจะสำเร็จ
 2. ให้ทุกธุรกรรม**โปร่งใสและตรวจสอบย้อนหลังได้** บน Blockchain รวมถึงการกระทำของ Admin ด้วย
 3. มีระบบ**คืนเงินอัตโนมัติตามเวลา**และ**ระบบตัดสินข้อพิพาท**
-4. มีระบบ**รีวิวผู้ขายที่แก้ไขหรือลบไม่ได้**
+4. มีระบบ**รีวิวผู้ขายจากผู้ซื้อจริง** (รีวิวได้เฉพาะคำสั่งซื้อที่สำเร็จ 1 ครั้ง และแก้ไขไม่ได้)
 5. **ปกป้องข้อมูลส่วนตัว** โดยเก็บที่อยู่จัดส่งไว้นอก Blockchain และให้เห็นเฉพาะคนที่เกี่ยวข้อง
 6. มีหน้าเว็บแบบอีคอมเมิร์ซที่ใช้งานง่าย และชำระเงินผ่าน **MetaMask**
 
@@ -95,18 +95,18 @@
 |---|---|---|
 | ชื่อสินค้า หมวดหมู่ สภาพ **ราคา สต็อก** ผู้ขาย สถานะสินค้า | ⛓ Blockchain | เกี่ยวกับเงินโดยตรง contract ต้องรู้ราคาจริงเพื่อตรวจว่าผู้ซื้อจ่ายครบ |
 | คำสั่งซื้อ escrow สถานะ เลขพัสดุ ข้อพิพาท คำตัดสิน | ⛓ Blockchain | หัวใจของระบบ |
-| คะแนนรีวิว (ดาว) | ⛓ Blockchain | ต้องแก้ไขไม่ได้ |
-| hash ของรายละเอียดสินค้า / ข้อความรีวิว / เหตุผลข้อพิพาท | ⛓ Blockchain | ใช้ตรวจสอบความถูกต้องของข้อมูลใน Supabase |
+| hash ของรายละเอียดสินค้า / เหตุผลข้อพิพาท | ⛓ Blockchain | ใช้ตรวจสอบความถูกต้องของข้อมูลใน Supabase |
+| รีวิว (ดาว + ข้อความ) | 🗄 Supabase | ผู้ใช้ไม่ต้องยืนยันใน MetaMask / ไม่เสีย gas (เปลี่ยนจากแผนเดิม ดูข้อ 8) |
 | รายละเอียดและตารางสเปก | 🗄 Supabase | ถ้าเก็บบน chain จะเสีย gas มาก |
 | รูปสินค้า | 🗄 Supabase Storage | อัปโหลดรูปได้จริง |
 | **ที่อยู่จัดส่ง ชื่อ และเบอร์โทรผู้ซื้อ** | 🗄 Supabase (ให้เห็นเฉพาะผู้ซื้อกับผู้ขายของคำสั่งซื้อนั้น) | ⚠️ ข้อมูลส่วนตัว **ห้ามเก็บบน chain** เพราะบน chain ทุกคนอ่านได้ |
 | โปรไฟล์ (ชื่อร้าน รูปโปรไฟล์) | 🗄 Supabase | |
-| ข้อความรีวิว หลักฐานข้อพิพาท (รูป) | 🗄 Supabase | |
+| หลักฐานข้อพิพาท (รูป) | 🗄 Supabase | |
 | การแจ้งเตือน | 🗄 Supabase | |
 
 ### 4.2 การ Sync ข้อมูลจาก Chain
 
-- **Edge Function `sync-chain`** อ่าน Events จาก contract ต่อจากบล็อกล่าสุดที่เคยอ่าน (เก็บไว้ในตาราง `sync_state`) แล้ว upsert ลงตาราง `products`, `orders` และ `reviews`
+- **Edge Function `sync-chain`** อ่าน Events จาก contract ต่อจากบล็อกล่าสุดที่เคยอ่าน (เก็บไว้ในตาราง `sync_state`) แล้ว upsert ลงตาราง `products`, `orders`, `sellers` และ `admins`
 - ใช้ **pg_cron** เรียกฟังก์ชันนี้ทุก 1 นาที และหน้าเว็บเรียกเพิ่มได้ทันทีหลังธุรกรรมสำเร็จ เพื่อให้ข้อมูลอัปเดตเร็ว
 - ตารางที่ sync จาก chain **มีแค่ Edge Function (service role) ที่เขียนได้** ผู้ใช้เขียนตรงไม่ได้ จึงปลอมสถานะคำสั่งซื้อหรือราคาไม่ได้
 - ก่อนทำธุรกรรมที่เกี่ยวกับเงิน หน้าเว็บจะ**อ่านราคาและสถานะล่าสุดจาก contract โดยตรง**เสมอ ไม่ใช้ค่าจาก Supabase
@@ -270,10 +270,15 @@
 ## 8. รีวิวและ Verified Seller
 
 **รีวิว**
-- ผู้ซื้อรีวิวได้ **1 ครั้งต่อคำสั่งซื้อที่สำเร็จ**
-- คะแนน 1–5 ดาวและ hash ของความเห็นเก็บ**บน chain** ส่วนข้อความความเห็นเก็บใน Supabase
-- รีวิว**แก้ไขหรือลบไม่ได้** ทั้งผู้ขายและ Admin ถ้าข้อความใน Supabase ถูกแก้ หน้าเว็บจะตรวจเจอจาก hash
-- หน้าเว็บแสดงคะแนนเฉลี่ยและจำนวนรีวิวของผู้ขาย
+- ผู้ซื้อรีวิวได้ **1 ครั้งต่อคำสั่งซื้อที่สำเร็จ** (สถานะ Completed บน chain) ให้คะแนน 1–5 ดาว + ข้อความ
+- **เก็บใน Supabase** (ตาราง `reviews`) — กดส่งได้ทันที ไม่ต้องยืนยันใน MetaMask และไม่เสีย gas
+- RLS บังคับว่า: ต้องเป็นผู้ซื้อของคำสั่งซื้อนั้นจริง, คำสั่งซื้อต้องสำเร็จแล้ว, 1 รีวิวต่อคำสั่งซื้อ, ผู้ใช้แก้ไข/ลบไม่ได้
+- คะแนนเฉลี่ยของผู้ขาย (`sellers.rating_sum / rating_count`) อัปเดตอัตโนมัติด้วย trigger
+
+> **การเปลี่ยนแปลงจากแผนเดิม:** เดิมคะแนนรีวิวเก็บบน Blockchain (`leaveReview`) เพื่อให้แก้ไขไม่ได้แม้แต่ Admin
+> แต่ผู้ใช้ต้องยืนยันธุรกรรมใน MetaMask ทุกครั้งที่รีวิว จึงย้ายมาเก็บใน Supabase เพื่อให้ใช้งานง่ายขึ้น
+> **ข้อแลกเปลี่ยน:** ผู้ที่เข้าถึงฐานข้อมูลโดยตรง (เจ้าของโปรเจกต์ Supabase) ยังแก้ไขรีวิวได้
+> ฟังก์ชัน `leaveReview` ยังอยู่ใน contract ที่ deploy แล้ว แต่หน้าเว็บไม่ได้เรียกใช้
 
 **Verified Seller**
 - Admin ให้หรือถอนป้าย **✔ Verified** ให้ผู้ขายได้
@@ -300,7 +305,7 @@
 | `confirmReceived(orderId)` | ยืนยันว่าได้รับของ ปล่อยเงินให้ผู้ขาย |
 | `requestRefund(orderId)` | ขอคืนเงินเมื่อผู้ขายไม่ส่งของภายในกำหนด |
 | `openDispute(orderId, reasonHash)` | เปิดข้อพิพาท |
-| `leaveReview(orderId, rating, commentHash)` | รีวิวผู้ขาย |
+| `leaveReview(orderId, rating, commentHash)` | ~~รีวิวผู้ขาย~~ — ไม่ได้ใช้แล้ว (รีวิวย้ายไป Supabase ดูข้อ 8) |
 
 ### 9.3 ทุกคน
 | ฟังก์ชัน | หน้าที่ |
@@ -347,7 +352,6 @@
 | `products` | `id` (= productId บน chain), `seller`, `title`, `category`, `condition`, `price_wei`, `stock`, `active`, `hidden`, `details_hash`, `created_block`, `updated_at` |
 | `orders` | `id` (= orderId), `product_id`, `buyer`, `seller`, `quantity`, `unit_price_wei`, `total_wei`, `fee_bps`, `status`, `tracking_no`, `paid_at`, `shipped_at`, `ship_deadline`, `confirm_deadline`, `tx_hash` |
 | `sellers` | `address`, `verified`, `banned`, `rating_sum`, `rating_count` |
-| `reviews` | `order_id`, `seller`, `buyer`, `rating`, `comment_hash`, `created_at` |
 | `admins` | `address` (owner ของ contract) |
 | `sync_state` | `contract_address`, `last_block` |
 
@@ -359,7 +363,7 @@
 | `product_details` | `product_id`, `description`, `specs` (jsonb), `images` (path[]) | ผู้ขายเจ้าของสินค้า | ทุกคน |
 | `addresses` | `id`, `owner`, `recipient_name`, `phone`, `address_line`, `district`, `province`, `postcode` | เจ้าของ | เจ้าของ |
 | `order_shipping` | `order_id`, `recipient_name`, `phone`, `address` (สำเนาตอนสั่งซื้อ) | ผู้ซื้อของคำสั่งซื้อนั้น | ผู้ซื้อ, ผู้ขายของคำสั่งซื้อนั้น, Admin (เฉพาะเมื่อมีข้อพิพาท) |
-| `review_comments` | `order_id`, `comment` | ผู้ซื้อ (เฉพาะคำสั่งซื้อที่สำเร็จ) | ทุกคน |
+| `reviews` | `order_id`, `seller`, `buyer`, `rating`, `comment`, `created_at` | ผู้ซื้อของคำสั่งซื้อที่สำเร็จ (1 ครั้ง, แก้ไม่ได้) | ทุกคน |
 | `dispute_details` | `order_id`, `reason`, `evidence` (path[]), `admin_note` | ผู้ซื้อ / Admin | ผู้ซื้อ, ผู้ขาย, Admin |
 | `notifications` | `id`, `recipient`, `type`, `order_id`, `read`, `created_at` | Edge Function | ผู้รับ |
 

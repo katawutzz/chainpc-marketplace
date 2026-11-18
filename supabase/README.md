@@ -11,6 +11,7 @@ URL: `https://fzyffuwqssjmxkwcjzne.supabase.co`
 | `migrations/20261118120100_sync_cron.sql` | pg_cron เรียก `sync-chain` ทุก 1 นาที |
 | `migrations/20261118120200_service_role_grants.sql` | สิทธิ์ของ service_role (ใช้โดย Edge Function) |
 | `migrations/20261118120300_harden_helpers.sql` | ย้าย helper ไป schema `app_private` และ pg_net ไป `extensions` (ผ่าน Security Advisor) |
+| `migrations/20261118130000_offchain_reviews.sql` | ย้ายรีวิวออกจาก chain → ตาราง `reviews` ผู้ซื้อเขียนเองได้ (RLS) + trigger คำนวณคะแนนผู้ขาย |
 | `functions/sync-chain/index.ts` | อ่าน Events จาก contract บน Hoodi → upsert สถานะล่าสุดลงตาราง + สร้างแจ้งเตือน |
 | `functions/_shared/pcMarketplace.ts` | ABI + address (สร้างอัตโนมัติจาก `contracts/` — ห้ามแก้ด้วยมือ) |
 | `config.toml` | เปิด Web3 (Ethereum) auth และ `verify_jwt = false` ให้ `sync-chain` |
