@@ -1,0 +1,16 @@
+# ตั้งค่า Supabase CLI ของโปรเจกต์ ChainPC
+# โปรเจกต์บน Supabase Cloud: chainpc (ref: fzyffuwqssjmxkwcjzne)
+
+project_id = "chainpc"
+
+[auth.web3.ethereum]
+enabled = true
+
+[auth.rate_limit]
+# จำนวนครั้งที่ล็อกอินด้วย Web3 ได้ต่อ 5 นาทีต่อ IP
+web3 = 30
+
+# หน้าเว็บและ pg_cron เรียกได้โดยไม่ต้องมี JWT
+# (ฟังก์ชันแค่อ่านข้อมูลจาก chain มาเขียนลง DB จึงไม่มีอะไรให้ผู้เรียกปลอมแปลงได้)
+[functions.sync-chain]
+verify_jwt = false

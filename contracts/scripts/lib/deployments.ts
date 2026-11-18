@@ -16,6 +16,8 @@ export interface DeploymentInfo {
 export const CONTRACTS_ROOT = path.resolve(__dirname, "..", "..");
 export const DEPLOYMENTS_DIR = path.join(CONTRACTS_ROOT, "deployments");
 export const WEB_CONTRACTS_DIR = path.resolve(CONTRACTS_ROOT, "..", "web", "src", "contracts");
+// Edge Function (Deno) ใช้ ABI ชุดเดียวกัน
+export const SUPABASE_SHARED_DIR = path.resolve(CONTRACTS_ROOT, "..", "supabase", "functions", "_shared");
 const ARTIFACT_PATH = path.join(
   CONTRACTS_ROOT,
   "artifacts",
@@ -79,5 +81,8 @@ export const pcMarketplaceAbi = ${JSON.stringify(artifact.abi, null, 2)} as cons
   fs.mkdirSync(WEB_CONTRACTS_DIR, { recursive: true });
   const file = path.join(WEB_CONTRACTS_DIR, "pcMarketplace.ts");
   fs.writeFileSync(file, content);
+
+  fs.mkdirSync(SUPABASE_SHARED_DIR, { recursive: true });
+  fs.writeFileSync(path.join(SUPABASE_SHARED_DIR, "pcMarketplace.ts"), content);
   return file;
 }
