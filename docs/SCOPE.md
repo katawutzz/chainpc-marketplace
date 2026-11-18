@@ -512,31 +512,28 @@ chainpc-marketplace/
 
 ## 16. แผนการทำงาน
 
-| ระยะ | งาน | ผลลัพธ์ |
-|---|---|---|
-| 1 | สร้าง repo `chainpc-marketplace` + ตั้งค่า Hardhat + เขียน Smart Contract | `PCMarketplace.sol` compile ผ่าน |
-| 2 | เขียน Unit Test ครอบคลุมทุก Flow | เทสต์ผ่านทั้งหมด |
-| 3 | Deploy ขึ้น Hoodi + สคริปต์ seed | Contract Address บน Hoodi |
-| 4 | Supabase: ตาราง, RLS, Storage, Web3 Auth, Edge Function `sync-chain` | ข้อมูลจาก chain sync เข้า Supabase |
-| 5 | Web: ตั้งค่า React/Vite/Tailwind/wagmi · Header · เชื่อม MetaMask + Sign-in · หน้าตลาด · หน้าสินค้า | ดูและค้นหาสินค้าได้ |
-| 6 | Web: ตะกร้า · ชำระเงิน + ที่อยู่ · คำสั่งซื้อของฉัน · ศูนย์ผู้ขาย + อัปโหลดรูป | ซื้อขายได้ครบ Flow |
-| 7 | Web: Admin Panel · รีวิว · ข้อพิพาท · แจ้งเตือน · ถอนเงิน | ครบทุกฟีเจอร์ |
-| 8 | ทดสอบบน Hoodi ด้วย MetaMask 3 บัญชี + ทดสอบ RLS + เขียน README | พร้อมส่งและพรีเซนต์ |
+| ระยะ | งาน | ผลลัพธ์ | สถานะ |
+|---|---|---|---|
+| 1 | สร้าง repo `chainpc-marketplace` + ตั้งค่า Hardhat + เขียน Smart Contract | `PCMarketplace.sol` compile ผ่าน | ✅ |
+| 2 | เขียน Unit Test ครอบคลุมทุก Flow | เทสต์ผ่านทั้งหมด (52) | ✅ |
+| 3 | Deploy ขึ้น Hoodi (ผ่าน Remix + MetaMask) | `0x544A1e1c5ed8c03125f91E7e00920A44891dfDb3` | ✅ |
+| 4 | Supabase: ตาราง, RLS, Storage, Web3 Auth, Edge Function `sync-chain` | ข้อมูลจาก chain sync เข้า Supabase ทุก 1 นาที | ✅ |
+| 5 | Web: ตั้งค่า React/Vite/Tailwind/wagmi · Header · เชื่อม MetaMask + Sign-in · หน้าตลาด · หน้าสินค้า | ดูและค้นหาสินค้าได้ | ✅ |
+| 6 | Web: ตะกร้า · ชำระเงิน + ที่อยู่ · คำสั่งซื้อของฉัน · ศูนย์ผู้ขาย + อัปโหลดรูป | ซื้อขายได้ครบ Flow | ✅ |
+| 7 | Web: Admin Panel · รีวิว · ข้อพิพาท · แจ้งเตือน · ถอนเงิน | ครบทุกฟีเจอร์ | ✅ |
+| 8 | ทดสอบอัตโนมัติ + health check + เช็กลิสต์ทดสอบด้วยมือ + README | ดู [TESTING.md](TESTING.md) | ✅ (ทดสอบด้วยมือบางข้อยังรอ) |
 
 ---
 
-## 17. ประเด็นที่รอยืนยัน
+## 17. การตัดสินใจ
 
-**ยืนยันแล้ว ✅**
-- [x] ชื่อ ChainPC · repo `chainpc-marketplace` · Supabase `chainpc`
+- [x] ชื่อ ChainPC · repo `chainpc-marketplace` · Supabase `chainpc` (สร้างใหม่ แยกจากโปรเจกต์อื่น)
 - [x] รูปแบบ "ใครก็ขายได้ + Admin คอยดูแล"
-- [x] ค่าธรรมเนียม 2% · ระยะเวลา 3 วัน / 7 วัน · ตะกร้าจ่ายครั้งเดียว · รีวิว + Verified · สต็อกหลายชิ้น
+- [x] ค่าธรรมเนียม 2% · ระยะเวลา 3 วัน / 7 วัน (ตอนสาธิตตั้งเป็น 2 นาที) · ตะกร้าจ่ายครั้งเดียว · Verified · สต็อกหลายชิ้น
 - [x] ราคาและสต็อกเก็บบน chain และผู้ขายแก้ไขได้
-- [x] Supabase เป็น backend · Sign in with Ethereum · sync ด้วย Edge Function
-- [x] React + Vite + TypeScript + wagmi/viem + Tailwind
-- [x] หน้าตาสไตล์อีคอมเมิร์ซ · ภาษาไทย
-
-**ยังรอยืนยัน**
-- [ ] สร้างโปรเจกต์ Supabase `chainpc` ใหม่ (ไม่ใช้โปรเจกต์เดิม) และอัปโหลดรูปได้ / ไม่มีแชต
-- [ ] ชุดสีตามข้อ 11.3
-- [ ] อาจารย์กำหนดเครื่องมือหรือรูปแบบรายงานเพิ่มเติมไหม
+- [x] Supabase เป็น backend · Sign in with Ethereum · sync ด้วย Edge Function · อัปโหลดรูปได้ · ไม่มีแชต
+- [x] React + Vite + TypeScript + wagmi/viem + Tailwind · หน้าตาสไตล์อีคอมเมิร์ซ (น้ำเงินเข้ม + มิ้นต์) · ภาษาไทย
+- [x] Deploy contract ผ่าน Remix + MetaMask (ไม่ต้องเก็บ private key ในโปรเจกต์)
+- [x] รีวิวย้ายจาก Blockchain มาเก็บใน Supabase (ดูข้อ 8)
+- [x] หน้าเว็บใช้คำว่า "แจ้งปัญหา" แทน "ข้อพิพาท"
+- [ ] อาจารย์กำหนดรูปแบบรายงานเพิ่มเติมไหม
