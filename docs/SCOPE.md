@@ -51,7 +51,7 @@
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Smart Contract | Solidity `^0.8.24` + OpenZeppelin (`Ownable`, `ReentrancyGuard`, `Pausable`) |
+| Smart Contract | Solidity `^0.8.24` + OpenZeppelin (`AccessControlEnumerable`, `ReentrancyGuard`, `Pausable`) |
 | เครื่องมือ Contract | Hardhat (compile / test / deploy / verify) + Mocha / Chai |
 | Frontend | **React + Vite + TypeScript** |
 | เชื่อม Wallet / Contract | **wagmi + viem** (มี TanStack Query ติดมาด้วย) |
@@ -130,7 +130,7 @@
 | **ผู้เยี่ยมชม** | ทุกคน ไม่ต้องเชื่อม wallet | ดูและค้นหาสินค้า ดูรีวิว |
 | **ผู้ซื้อ** | ใครก็ได้ที่เชื่อม MetaMask และล็อกอิน | ใส่ตะกร้า กรอกที่อยู่ ชำระเงิน ยืนยันรับของ ขอคืนเงิน เปิดข้อพิพาท รีวิว ถอนเงินคืน |
 | **ผู้ขาย** | ใครก็ได้ที่เชื่อม MetaMask (และไม่ถูกแบน) | ตั้งชื่อร้าน ลงขาย แก้ไข และปิดการขายสินค้าของตัวเอง ดูที่อยู่จัดส่ง แจ้งจัดส่ง รับเงินเมื่อพ้นเวลา ถอนเงิน |
-| **Admin** | wallet ที่ deploy contract (โอนสิทธิ์ต่อได้) | ซ่อนสินค้า แบนผู้ขาย ให้ป้าย Verified ตัดสินข้อพิพาท (ดูหลักฐานได้) ตั้งค่าธรรมเนียมและระยะเวลา หยุดระบบชั่วคราว ถอนค่าธรรมเนียม |
+| **Admin** | wallet ที่มี ADMIN_ROLE (หลายคนได้ · ผู้ deploy เพิ่ม/ถอดได้) | ซ่อนสินค้า แบนผู้ขาย ให้ป้าย Verified ตัดสินข้อพิพาท (ดูหลักฐานได้) ตั้งค่าธรรมเนียมและระยะเวลา หยุดระบบชั่วคราว ถอนค่าธรรมเนียม |
 
 > wallet เดียวเป็นได้ทั้งผู้ซื้อและผู้ขาย แต่**ซื้อสินค้าของตัวเองไม่ได้**
 
@@ -278,7 +278,7 @@
 > **การเปลี่ยนแปลงจากแผนเดิม:** เดิมคะแนนรีวิวเก็บบน Blockchain (`leaveReview`) เพื่อให้แก้ไขไม่ได้แม้แต่ Admin
 > แต่ผู้ใช้ต้องยืนยันธุรกรรมใน MetaMask ทุกครั้งที่รีวิว จึงย้ายมาเก็บใน Supabase เพื่อให้ใช้งานง่ายขึ้น
 > **ข้อแลกเปลี่ยน:** ผู้ที่เข้าถึงฐานข้อมูลโดยตรง (เจ้าของโปรเจกต์ Supabase) ยังแก้ไขรีวิวได้
-> ฟังก์ชัน `leaveReview` ยังอยู่ใน contract ที่ deploy แล้ว แต่หน้าเว็บไม่ได้เรียกใช้
+> contract v2 ตัดฟังก์ชัน `leaveReview` ออกแล้ว
 
 **Verified Seller**
 - Admin ให้หรือถอนป้าย **✔ Verified** ให้ผู้ขายได้
@@ -305,7 +305,7 @@
 | `confirmReceived(orderId)` | ยืนยันว่าได้รับของ ปล่อยเงินให้ผู้ขาย |
 | `requestRefund(orderId)` | ขอคืนเงินเมื่อผู้ขายไม่ส่งของภายในกำหนด |
 | `openDispute(orderId, reasonHash)` | เปิดข้อพิพาท |
-| `leaveReview(orderId, rating, commentHash)` | ~~รีวิวผู้ขาย~~ — ไม่ได้ใช้แล้ว (รีวิวย้ายไป Supabase ดูข้อ 8) |
+| ~~`leaveReview`~~ | ตัดออกใน contract v2 — รีวิวอยู่ใน Supabase (ดูข้อ 8) |
 
 ### 9.3 ทุกคน
 | ฟังก์ชัน | หน้าที่ |
@@ -516,12 +516,13 @@ chainpc-marketplace/
 |---|---|---|---|
 | 1 | สร้าง repo `chainpc-marketplace` + ตั้งค่า Hardhat + เขียน Smart Contract | `PCMarketplace.sol` compile ผ่าน | ✅ |
 | 2 | เขียน Unit Test ครอบคลุมทุก Flow | เทสต์ผ่านทั้งหมด (52) | ✅ |
-| 3 | Deploy ขึ้น Hoodi (ผ่าน Remix + MetaMask) | `0x544A1e1c5ed8c03125f91E7e00920A44891dfDb3` | ✅ |
+| 3 | Deploy ขึ้น Hoodi (ผ่าน Remix + MetaMask) | `0x300aa9213a0F159100f21864205a88368013240D` | ✅ |
 | 4 | Supabase: ตาราง, RLS, Storage, Web3 Auth, Edge Function `sync-chain` | ข้อมูลจาก chain sync เข้า Supabase ทุก 1 นาที | ✅ |
 | 5 | Web: ตั้งค่า React/Vite/Tailwind/wagmi · Header · เชื่อม MetaMask + Sign-in · หน้าตลาด · หน้าสินค้า | ดูและค้นหาสินค้าได้ | ✅ |
 | 6 | Web: ตะกร้า · ชำระเงิน + ที่อยู่ · คำสั่งซื้อของฉัน · ศูนย์ผู้ขาย + อัปโหลดรูป | ซื้อขายได้ครบ Flow | ✅ |
 | 7 | Web: Admin Panel · รีวิว · ข้อพิพาท · แจ้งเตือน · ถอนเงิน | ครบทุกฟีเจอร์ | ✅ |
 | 8 | ทดสอบอัตโนมัติ + health check + เช็กลิสต์ทดสอบด้วยมือ + README | ดู [TESTING.md](TESTING.md) | ✅ (ทดสอบด้วยมือบางข้อยังรอ) |
+| 9 | contract v2: หลาย Admin (AccessControlEnumerable) + deploy ใหม่ | `0x300aa9213a0F159100f21864205a88368013240D` | ✅ |
 
 ---
 

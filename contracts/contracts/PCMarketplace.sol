@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -13,13 +13,18 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * - ผู้ขายแจ้งจัดส่ง → ผู้ซื้อยืนยันรับของ → เงินปลดให้ผู้ขาย (หักค่าธรรมเนียม)
  * - ผู้ขายไม่ส่งของตามกำหนด → ผู้ซื้อขอเงินคืนได้
  * - ผู้ซื้อเงียบเกินกำหนด → ผู้ขายรับเงินเองได้
- * - มีข้อพิพาท → Admin (owner) ตัดสิน
+ * - มีข้อพิพาท → Admin ตัดสิน
  * - เงินทุกก้อนใช้รูปแบบ Pull Payment: บันทึกยอดไว้ แล้วเจ้าของกด withdraw() เอง
  *
- * ข้อความยาว (รายละเอียดสินค้า, ความเห็นรีวิว, เหตุผลข้อพิพาท) เก็บใน Supabase
+ * สิทธิ์ (OpenZeppelin AccessControlEnumerable — มี Admin ได้หลายคน):
+ * - ADMIN_ROLE          ดูแลระบบ: ซ่อนสินค้า แบน/Verified ตัดสินข้อพิพาท ตั้งค่า pause ถอนค่าธรรมเนียม
+ * - DEFAULT_ADMIN_ROLE  เพิ่ม/ถอด Admin (grantRole / revokeRole) — ผู้ deploy ได้ทั้งสอง role
+ *
+ * ข้อความยาว (รายละเอียดสินค้า, เหตุผลข้อพิพาท) เก็บใน Supabase
  * บน chain เก็บแค่ keccak256 hash ไว้ตรวจสอบว่าข้อมูลไม่ถูกแก้ไข
+ * (รีวิวเก็บใน Supabase ทั้งหมด — ดู docs/SCOPE.md ข้อ 8)
  */
-contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
+contract PCMarketplace is AccessControlEnumerable, Pausable, ReentrancyGuard {
     // ───────────────────────────── Types ─────────────────────────────
 
     enum Category {
@@ -80,18 +85,16 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
         uint64 confirmDeadline; // ผู้ซื้อต้องยืนยัน/เปิดข้อพิพาทก่อนเวลานี้
         string trackingNo;
         bytes32 disputeReasonHash;
-        bool reviewed;
     }
 
     struct SellerInfo {
         bool verified;
         bool banned;
-        uint64 ratingSum;
-        uint64 ratingCount;
     }
 
     // ─────────────────────────── Constants ───────────────────────────
 
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     uint16 public constant MAX_FEE_BPS = 1_000; // สูงสุด 10%
     uint16 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant MAX_CART_ITEMS = 20;
@@ -148,13 +151,6 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
     event OrderRefunded(uint256 indexed orderId, uint256 amount);
     event DisputeOpened(uint256 indexed orderId, bytes32 reasonHash);
     event DisputeResolved(uint256 indexed orderId, bool refundBuyer, string note);
-    event ReviewAdded(
-        uint256 indexed orderId,
-        address indexed seller,
-        address indexed buyer,
-        uint8 rating,
-        bytes32 commentHash
-    );
 
     event SellerBanned(address indexed seller, bool banned);
     event SellerVerified(address indexed seller, bool verified);
@@ -177,7 +173,6 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
     error InvalidQuantity();
     error InvalidTracking();
     error InvalidNote();
-    error InvalidRating();
     error InvalidFee();
     error InvalidWindow();
     error InvalidAddress();
@@ -191,7 +186,6 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
     error InvalidStatus(OrderStatus current);
     error DeadlinePassed();
     error DeadlineNotReached();
-    error AlreadyReviewed();
     error NothingToWithdraw();
     error TransferFailed();
 
@@ -201,14 +195,27 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
      * @param initialFeeBps ค่าธรรมเนียม (bps) เช่น 200 = 2%
      * @param initialShipWindow เวลาที่ผู้ขายต้องจัดส่ง (วินาที) เช่น 3 days
      * @param initialConfirmWindow เวลาที่ผู้ซื้อต้องยืนยัน (วินาที) เช่น 7 days
+     * @param extraAdmins Admin เพิ่มเติมนอกจากผู้ deploy (ใส่ [] ได้)
      */
     constructor(
         uint16 initialFeeBps,
         uint32 initialShipWindow,
-        uint32 initialConfirmWindow
-    ) Ownable(msg.sender) {
+        uint32 initialConfirmWindow,
+        address[] memory extraAdmins
+    ) {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+        for (uint256 i = 0; i < extraAdmins.length; ++i) {
+            if (extraAdmins[i] == address(0)) revert InvalidAddress();
+            _grantRole(ADMIN_ROLE, extraAdmins[i]);
+        }
         _setFee(initialFeeBps);
         _setDeadlines(initialShipWindow, initialConfirmWindow);
+    }
+
+    /// @notice รายชื่อ Admin ทั้งหมด (ADMIN_ROLE)
+    function getAdmins() external view returns (address[] memory) {
+        return getRoleMembers(ADMIN_ROLE);
     }
 
     // ─────────────────────────── Modifiers ───────────────────────────
@@ -424,22 +431,6 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
         emit DisputeOpened(orderId, reasonHash);
     }
 
-    /// @notice รีวิวผู้ขาย 1–5 ดาว (1 ครั้งต่อคำสั่งซื้อที่สำเร็จ)
-    function leaveReview(uint256 orderId, uint8 rating, bytes32 commentHash) external orderExists(orderId) {
-        Order storage o = _orders[orderId];
-        if (o.buyer != msg.sender) revert NotOrderBuyer();
-        if (o.status != OrderStatus.Completed) revert InvalidStatus(o.status);
-        if (o.reviewed) revert AlreadyReviewed();
-        if (rating < 1 || rating > 5) revert InvalidRating();
-
-        o.reviewed = true;
-        SellerInfo storage s = _sellers[o.seller];
-        s.ratingSum += rating;
-        s.ratingCount += 1;
-
-        emit ReviewAdded(orderId, o.seller, msg.sender, rating, commentHash);
-    }
-
     // ═══════════════════════════ ทุกคน ════════════════════════════════
 
     /// @notice ถอนยอดเงินที่ถอนได้ของตัวเอง (ทำได้แม้ระบบ pause)
@@ -455,18 +446,18 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
 
     // ═══════════════════════════ Admin ════════════════════════════════
 
-    function setProductHidden(uint256 productId, bool hidden) external onlyOwner productExists(productId) {
+    function setProductHidden(uint256 productId, bool hidden) external onlyRole(ADMIN_ROLE) productExists(productId) {
         _products[productId].hidden = hidden;
         emit ProductHidden(productId, hidden);
     }
 
-    function setSellerBanned(address seller, bool banned) external onlyOwner {
+    function setSellerBanned(address seller, bool banned) external onlyRole(ADMIN_ROLE) {
         if (seller == address(0)) revert InvalidAddress();
         _sellers[seller].banned = banned;
         emit SellerBanned(seller, banned);
     }
 
-    function setSellerVerified(address seller, bool verified) external onlyOwner {
+    function setSellerVerified(address seller, bool verified) external onlyRole(ADMIN_ROLE) {
         if (seller == address(0)) revert InvalidAddress();
         _sellers[seller].verified = verified;
         emit SellerVerified(seller, verified);
@@ -477,7 +468,7 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
         uint256 orderId,
         bool refundBuyer,
         string calldata note
-    ) external onlyOwner orderExists(orderId) {
+    ) external onlyRole(ADMIN_ROLE) orderExists(orderId) {
         Order storage o = _orders[orderId];
         if (o.status != OrderStatus.Disputed) revert InvalidStatus(o.status);
         if (bytes(note).length > MAX_NOTE_LENGTH) revert InvalidNote();
@@ -490,24 +481,24 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
         emit DisputeResolved(orderId, refundBuyer, note);
     }
 
-    function setFee(uint16 newFeeBps) external onlyOwner {
+    function setFee(uint16 newFeeBps) external onlyRole(ADMIN_ROLE) {
         _setFee(newFeeBps);
     }
 
-    function setDeadlines(uint32 newShipWindow, uint32 newConfirmWindow) external onlyOwner {
+    function setDeadlines(uint32 newShipWindow, uint32 newConfirmWindow) external onlyRole(ADMIN_ROLE) {
         _setDeadlines(newShipWindow, newConfirmWindow);
     }
 
-    function pause() external onlyOwner {
+    function pause() external onlyRole(ADMIN_ROLE) {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(ADMIN_ROLE) {
         _unpause();
     }
 
     /// @notice ถอนค่าธรรมเนียมสะสม (ถอนเงิน escrow ของผู้ซื้อไม่ได้)
-    function withdrawFees(address payable to) external onlyOwner nonReentrant {
+    function withdrawFees(address payable to) external onlyRole(ADMIN_ROLE) nonReentrant {
         if (to == address(0)) revert InvalidAddress();
         uint256 amount = accumulatedFees;
         if (amount == 0) revert NothingToWithdraw();

@@ -15,10 +15,11 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
     settings: {
-      // ตั้งให้ตรงกับค่าปกติของ Remix (paris + optimizer 200, ไม่ใช้ viaIR)
+      // ตั้งให้ตรงกับ Remix (cancun + optimizer 200, ไม่ใช้ viaIR)
       // เพื่อให้ bytecode ตรงกันไม่ว่าจะ deploy ด้วย Hardhat หรือ Remix + MetaMask
+      // cancun จำเป็นสำหรับ AccessControlEnumerable ของ OpenZeppelin 5 (ใช้คำสั่ง mcopy) — Hoodi รองรับ
       optimizer: { enabled: true, runs: 200 },
-      evmVersion: "paris",
+      evmVersion: "cancun",
     },
   },
   networks: {

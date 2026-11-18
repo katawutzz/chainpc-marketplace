@@ -130,7 +130,6 @@ async function readOrder(id: bigint) {
     confirm_deadline: iso(o.confirmDeadline),
     tracking_no: o.trackingNo || null,
     dispute_reason_hash: isZeroHash(o.disputeReasonHash) ? null : o.disputeReasonHash,
-    reviewed: o.reviewed,
     synced_at: new Date().toISOString(),
   };
 }
@@ -151,16 +150,22 @@ async function readSeller(address: string) {
   };
 }
 
-async function syncAdmins(): Promise<string> {
-  const owner = lower(
-    await client.readContract({ address: CONTRACT, abi: pcMarketplaceAbi, functionName: "owner" }),
+/** รายชื่อ Admin (ADMIN_ROLE) จาก contract → ตาราง admins (เพิ่ม/ลบให้ตรงกัน) */
+async function syncAdmins(): Promise<string[]> {
+  const onChain = (
+    await client.readContract({ address: CONTRACT, abi: pcMarketplaceAbi, functionName: "getAdmins" })
+  ).map(lower);
+  const current = (check(await supabase.from("admins").select("address"), "read admins") as { address: string }[]).map(
+    (a) => a.address,
   );
-  const current = check(await supabase.from("admins").select("address"), "read admins") as { address: string }[];
-  if (current.length !== 1 || current[0].address !== owner) {
-    check(await supabase.from("admins").delete().neq("address", owner), "delete old admins");
-    check(await supabase.from("admins").upsert({ address: owner, synced_at: new Date().toISOString() }), "upsert admin");
+  const removed = current.filter((a) => !onChain.includes(a));
+  const added = onChain.filter((a) => !current.includes(a));
+  if (removed.length) check(await supabase.from("admins").delete().in("address", removed), "delete old admins");
+  if (added.length) {
+    const now = new Date().toISOString();
+    check(await supabase.from("admins").upsert(added.map((address) => ({ address, synced_at: now }))), "upsert admins");
   }
-  return owner;
+  return onChain;
 }
 
 // ---------------------------------------------------------------------
@@ -178,7 +183,7 @@ interface NotifyIntent {
 }
 
 // deno-lint-ignore no-explicit-any
-async function processLogs(logs: any[], admin: string) {
+async function processLogs(logs: any[], admins: string[]) {
   const productIds = new Set<bigint>();
   const orderIds = new Set<bigint>();
   const sellers = new Set<string>();
@@ -273,9 +278,7 @@ async function processLogs(logs: any[], admin: string) {
   const notifications = intents.flatMap((n) => {
     const o = orderMap.get(n.orderId);
     if (!o) return [];
-    const recipients = new Set(
-      n.to.map((t) => (t === "buyer" ? o.buyer : t === "seller" ? o.seller : admin)),
-    );
+    const recipients = new Set(n.to.flatMap((t) => (t === "buyer" ? [o.buyer] : t === "seller" ? [o.seller] : admins)));
     return [...recipients].map((recipient) => ({
       recipient,
       type: n.type,
@@ -331,7 +334,7 @@ Deno.serve(async (req) => {
       "touch sync_state",
     );
 
-    const admin = await syncAdmins();
+    const admins = await syncAdmins();
     const head = (await client.getBlockNumber()) - CONFIRMATIONS;
     const totals = { logs: 0, products: 0, orders: 0, sellers: 0, notifications: 0 };
     let chunks = 0;
@@ -344,7 +347,7 @@ Deno.serve(async (req) => {
         fromBlock: from,
         toBlock: to,
       });
-      const r = await processLogs(logs, admin);
+      const r = await processLogs(logs, admins);
       totals.logs += logs.length;
       totals.products += r.products;
       totals.orders += r.orders;
@@ -365,7 +368,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       contract: CONTRACT,
-      admin,
+      admins,
       syncedTo: Number(from - 1n),
       head: Number(head),
       caughtUp: from > head,

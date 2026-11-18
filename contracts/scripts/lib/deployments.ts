@@ -10,7 +10,7 @@ export interface DeploymentInfo {
   txHash: string;
   deployBlock: number;
   deployedAt: string;
-  constructorArgs: [number, number, number]; // [feeBps, shipWindow, confirmWindow]
+  constructorArgs: [number, number, number, string[]]; // [feeBps, shipWindow, confirmWindow, extraAdmins]
 }
 
 export const CONTRACTS_ROOT = path.resolve(__dirname, "..", "..");

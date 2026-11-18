@@ -3,13 +3,13 @@
 
 export const pcMarketplaceAddress = {
   31337: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // localhost
-  560048: "0x544A1e1c5ed8c03125f91E7e00920A44891dfDb3", // hoodi
+  560048: "0x300aa9213a0F159100f21864205a88368013240D", // hoodi
 } as const satisfies Record<number, `0x${string}`>;
 
 /** block ที่ deploy contract (ใช้เป็นจุดเริ่มอ่าน Events) */
 export const pcMarketplaceDeployBlock = {
   31337: 1n, // localhost
-  560048: 4040032n, // hoodi
+  560048: 4040731n, // hoodi
 } as const satisfies Record<number, bigint>;
 
 export const pcMarketplaceAbi = [
@@ -29,6 +29,11 @@ export const pcMarketplaceAbi = [
         "internalType": "uint32",
         "name": "initialConfirmWindow",
         "type": "uint32"
+      },
+      {
+        "internalType": "address[]",
+        "name": "extraAdmins",
+        "type": "address[]"
       }
     ],
     "stateMutability": "nonpayable",
@@ -36,7 +41,23 @@ export const pcMarketplaceAbi = [
   },
   {
     "inputs": [],
-    "name": "AlreadyReviewed",
+    "name": "AccessControlBadConfirmation",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "neededRole",
+        "type": "bytes32"
+      }
+    ],
+    "name": "AccessControlUnauthorizedAccount",
     "type": "error"
   },
   {
@@ -148,11 +169,6 @@ export const pcMarketplaceAbi = [
     "type": "error"
   },
   {
-    "inputs": [],
-    "name": "InvalidRating",
-    "type": "error"
-  },
-  {
     "inputs": [
       {
         "internalType": "enum PCMarketplace.OrderStatus",
@@ -212,28 +228,6 @@ export const pcMarketplaceAbi = [
       }
     ],
     "name": "OrderNotFound",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      }
-    ],
-    "name": "OwnableInvalidOwner",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "account",
-        "type": "address"
-      }
-    ],
-    "name": "OwnableUnauthorizedAccount",
     "type": "error"
   },
   {
@@ -508,25 +502,6 @@ export const pcMarketplaceAbi = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "previousOwner",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "OwnershipTransferred",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": false,
         "internalType": "address",
         "name": "account",
@@ -665,36 +640,74 @@ export const pcMarketplaceAbi = [
     "inputs": [
       {
         "indexed": true,
-        "internalType": "uint256",
-        "name": "orderId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "seller",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "buyer",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "rating",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
         "internalType": "bytes32",
-        "name": "commentHash",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "previousAdminRole",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "newAdminRole",
         "type": "bytes32"
       }
     ],
-    "name": "ReviewAdded",
+    "name": "RoleAdminChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "RoleGranted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "RoleRevoked",
     "type": "event"
   },
   {
@@ -769,12 +782,38 @@ export const pcMarketplaceAbi = [
   },
   {
     "inputs": [],
+    "name": "ADMIN_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "BPS_DENOMINATOR",
     "outputs": [
       {
         "internalType": "uint16",
         "name": "",
         "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_ADMIN_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -961,6 +1000,19 @@ export const pcMarketplaceAbi = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAdmins",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1051,11 +1103,6 @@ export const pcMarketplaceAbi = [
             "internalType": "bytes32",
             "name": "disputeReasonHash",
             "type": "bytes32"
-          },
-          {
-            "internalType": "bool",
-            "name": "reviewed",
-            "type": "bool"
           }
         ],
         "internalType": "struct PCMarketplace.Order",
@@ -1162,11 +1209,6 @@ export const pcMarketplaceAbi = [
             "internalType": "bytes32",
             "name": "disputeReasonHash",
             "type": "bytes32"
-          },
-          {
-            "internalType": "bool",
-            "name": "reviewed",
-            "type": "bool"
           }
         ],
         "internalType": "struct PCMarketplace.Order[]",
@@ -1347,6 +1389,87 @@ export const pcMarketplaceAbi = [
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getRoleAdmin",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRoleMember",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getRoleMemberCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getRoleMembers",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "seller",
         "type": "address"
@@ -1365,16 +1488,6 @@ export const pcMarketplaceAbi = [
             "internalType": "bool",
             "name": "banned",
             "type": "bool"
-          },
-          {
-            "internalType": "uint64",
-            "name": "ratingSum",
-            "type": "uint64"
-          },
-          {
-            "internalType": "uint64",
-            "name": "ratingCount",
-            "type": "uint64"
           }
         ],
         "internalType": "struct PCMarketplace.SellerInfo",
@@ -1388,24 +1501,43 @@ export const pcMarketplaceAbi = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "orderId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "rating",
-        "type": "uint8"
-      },
-      {
         "internalType": "bytes32",
-        "name": "commentHash",
+        "name": "role",
         "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
       }
     ],
-    "name": "leaveReview",
+    "name": "grantRole",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "hasRole",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1503,19 +1635,6 @@ export const pcMarketplaceAbi = [
   },
   {
     "inputs": [],
-    "name": "owner",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "pause",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -1567,8 +1686,19 @@ export const pcMarketplaceAbi = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "renounceOwnership",
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "callerConfirmation",
+        "type": "address"
+      }
+    ],
+    "name": "renounceRole",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1605,6 +1735,24 @@ export const pcMarketplaceAbi = [
       }
     ],
     "name": "resolveDispute",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "revokeRole",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1726,6 +1874,25 @@ export const pcMarketplaceAbi = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "interfaceId",
+        "type": "bytes4"
+      }
+    ],
+    "name": "supportsInterface",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "totalEscrow",
     "outputs": [
@@ -1736,19 +1903,6 @@ export const pcMarketplaceAbi = [
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

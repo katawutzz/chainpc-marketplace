@@ -20,7 +20,7 @@ describe("PCMarketplace", function () {
   async function deployFixture() {
     const [admin, seller, seller2, buyer, other] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("PCMarketplace");
-    const market = await factory.deploy(FEE_BPS, SHIP_WINDOW, CONFIRM_WINDOW);
+    const market = await factory.deploy(FEE_BPS, SHIP_WINDOW, CONFIRM_WINDOW, []);
     await market.waitForDeployment();
     return { market, admin, seller, seller2, buyer, other };
   }
@@ -78,7 +78,7 @@ describe("PCMarketplace", function () {
   describe("Deploy", function () {
     it("ตั้งค่าเริ่มต้นถูกต้อง", async function () {
       const { market, admin } = await loadFixture(deployFixture);
-      expect(await market.owner()).to.equal(admin.address);
+      expect(await market.hasRole(await market.ADMIN_ROLE(), admin.address)).to.equal(true);
       expect(await market.feeBps()).to.equal(FEE_BPS);
       expect(await market.shipWindow()).to.equal(SHIP_WINDOW);
       expect(await market.confirmWindow()).to.equal(CONFIRM_WINDOW);
@@ -88,15 +88,15 @@ describe("PCMarketplace", function () {
 
     it("ปฏิเสธค่าธรรมเนียมเกิน 10% และระยะเวลาไม่ถูกต้อง", async function () {
       const factory = await ethers.getContractFactory("PCMarketplace");
-      await expect(factory.deploy(1001, SHIP_WINDOW, CONFIRM_WINDOW)).to.be.revertedWithCustomError(
+      await expect(factory.deploy(1001, SHIP_WINDOW, CONFIRM_WINDOW, [])).to.be.revertedWithCustomError(
         factory,
         "InvalidFee"
       );
-      await expect(factory.deploy(FEE_BPS, 0, CONFIRM_WINDOW)).to.be.revertedWithCustomError(
+      await expect(factory.deploy(FEE_BPS, 0, CONFIRM_WINDOW, [])).to.be.revertedWithCustomError(
         factory,
         "InvalidWindow"
       );
-      await expect(factory.deploy(FEE_BPS, SHIP_WINDOW, 31 * DAY)).to.be.revertedWithCustomError(
+      await expect(factory.deploy(FEE_BPS, SHIP_WINDOW, 31 * DAY, [])).to.be.revertedWithCustomError(
         factory,
         "InvalidWindow"
       );
@@ -517,7 +517,7 @@ describe("PCMarketplace", function () {
       const { market, admin, buyer } = await loadFixture(disputedFixture);
       await expect(market.connect(buyer).resolveDispute(1, true, "")).to.be.revertedWithCustomError(
         market,
-        "OwnableUnauthorizedAccount"
+        "AccessControlUnauthorizedAccount"
       );
       await expect(market.connect(admin).resolveDispute(1, true, "x".repeat(281))).to.be.revertedWithCustomError(
         market,
@@ -531,59 +531,57 @@ describe("PCMarketplace", function () {
     });
   });
 
-  // ═══════════════════════════ รีวิว ═══════════════════════════
+  // ═══════════════════════════ หลาย Admin (AccessControl) ═══════════════════════════
 
-  describe("รีวิวผู้ขาย", function () {
-    it("รีวิวได้หลังสำเร็จ และคะแนนผู้ขายถูกสะสม", async function () {
-      const { market, seller, buyer } = await loadFixture(completedFixture);
-      const comment = ethers.id("ของดี ส่งไว");
-      await expect(market.connect(buyer).leaveReview(1, 5, comment))
-        .to.emit(market, "ReviewAdded")
-        .withArgs(1, seller.address, buyer.address, 5, comment);
-
-      const info = await market.getSellerInfo(seller.address);
-      expect(info.ratingSum).to.equal(5);
-      expect(info.ratingCount).to.equal(1);
-      expect((await market.getOrder(1)).reviewed).to.equal(true);
+  describe("หลาย Admin", function () {
+    it("ผู้ deploy ได้ทั้ง DEFAULT_ADMIN_ROLE และ ADMIN_ROLE และใส่ Admin เพิ่มตอน deploy ได้", async function () {
+      const [admin, , , , other] = await ethers.getSigners();
+      const factory = await ethers.getContractFactory("PCMarketplace");
+      const market = await factory.deploy(FEE_BPS, SHIP_WINDOW, CONFIRM_WINDOW, [other.address]);
+      const ADMIN_ROLE = await market.ADMIN_ROLE();
+      expect(await market.hasRole(await market.DEFAULT_ADMIN_ROLE(), admin.address)).to.equal(true);
+      expect(await market.hasRole(ADMIN_ROLE, admin.address)).to.equal(true);
+      expect(await market.hasRole(ADMIN_ROLE, other.address)).to.equal(true);
+      expect(await market.getAdmins()).to.deep.equal([admin.address, other.address]);
     });
 
-    it("รีวิวซ้ำไม่ได้", async function () {
-      const { market, buyer } = await loadFixture(completedFixture);
-      await market.connect(buyer).leaveReview(1, 4, ethers.ZeroHash);
-      await expect(market.connect(buyer).leaveReview(1, 5, ethers.ZeroHash)).to.be.revertedWithCustomError(
-        market,
-        "AlreadyReviewed"
+    it("ปฏิเสธ address 0 ในรายชื่อ Admin ตอน deploy", async function () {
+      const factory = await ethers.getContractFactory("PCMarketplace");
+      await expect(factory.deploy(FEE_BPS, SHIP_WINDOW, CONFIRM_WINDOW, [ethers.ZeroAddress])).to.be.revertedWithCustomError(
+        factory,
+        "InvalidAddress"
       );
     });
 
-    it("รีวิวคำสั่งซื้อที่ยังไม่สำเร็จไม่ได้ / คะแนนนอกช่วง 1–5 / คนอื่นรีวิวแทนไม่ได้", async function () {
-      const shipped = await loadFixture(shippedFixture);
-      await expect(
-        shipped.market.connect(shipped.buyer).leaveReview(1, 5, ethers.ZeroHash)
-      ).to.be.revertedWithCustomError(shipped.market, "InvalidStatus");
-
-      const { market, buyer, other } = await loadFixture(completedFixture);
-      await expect(market.connect(buyer).leaveReview(1, 0, ethers.ZeroHash)).to.be.revertedWithCustomError(
-        market,
-        "InvalidRating"
-      );
-      await expect(market.connect(buyer).leaveReview(1, 6, ethers.ZeroHash)).to.be.revertedWithCustomError(
-        market,
-        "InvalidRating"
-      );
-      await expect(market.connect(other).leaveReview(1, 5, ethers.ZeroHash)).to.be.revertedWithCustomError(
-        market,
-        "NotOrderBuyer"
-      );
+    it("Admin คนที่สองทำหน้าที่ Admin ได้ทุกอย่าง เช่น ตัดสินข้อพิพาท", async function () {
+      const { market, admin, buyer, other } = await loadFixture(disputedFixture);
+      await market.connect(admin).grantRole(await market.ADMIN_ROLE(), other.address);
+      await expect(market.connect(other).resolveDispute(1, true, "admin 2")).to.emit(market, "DisputeResolved");
+      await expect(market.connect(other).setFee(300)).to.emit(market, "FeeUpdated").withArgs(300);
+      expect(await market.pendingWithdrawals(buyer.address)).to.equal(GPU_PRICE);
     });
 
-    it("คำสั่งซื้อที่ถูกคืนเงินรีวิวไม่ได้", async function () {
-      const { market, seller, buyer } = await loadFixture(paidFixture);
-      await market.connect(seller).cancelOrder(1);
-      await expect(market.connect(buyer).leaveReview(1, 1, ethers.ZeroHash)).to.be.revertedWithCustomError(
+    it("เฉพาะ DEFAULT_ADMIN_ROLE เพิ่ม/ถอด Admin ได้ — Admin ทั่วไปเพิ่มคนอื่นไม่ได้", async function () {
+      const { market, admin, seller, other } = await loadFixture(deployFixture);
+      const ADMIN_ROLE = await market.ADMIN_ROLE();
+      await market.connect(admin).grantRole(ADMIN_ROLE, other.address);
+      await expect(market.connect(other).grantRole(ADMIN_ROLE, seller.address)).to.be.revertedWithCustomError(
         market,
-        "InvalidStatus"
+        "AccessControlUnauthorizedAccount"
       );
+      await expect(market.connect(admin).revokeRole(ADMIN_ROLE, other.address))
+        .to.emit(market, "RoleRevoked")
+        .withArgs(ADMIN_ROLE, other.address, admin.address);
+      await expect(market.connect(other).pause()).to.be.revertedWithCustomError(market, "AccessControlUnauthorizedAccount");
+      expect(await market.getAdmins()).to.deep.equal([admin.address]);
+    });
+
+    it("Admin สละสิทธิ์ตัวเองได้ (renounceRole)", async function () {
+      const { market, admin, other } = await loadFixture(deployFixture);
+      const ADMIN_ROLE = await market.ADMIN_ROLE();
+      await market.connect(admin).grantRole(ADMIN_ROLE, other.address);
+      await market.connect(other).renounceRole(ADMIN_ROLE, other.address);
+      expect(await market.hasRole(ADMIN_ROLE, other.address)).to.equal(false);
     });
   });
 
@@ -670,7 +668,7 @@ describe("PCMarketplace", function () {
         () => o.withdrawFees(other.address),
       ];
       for (const call of calls) {
-        await expect(call()).to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+        await expect(call()).to.be.revertedWithCustomError(market, "AccessControlUnauthorizedAccount");
       }
     });
 

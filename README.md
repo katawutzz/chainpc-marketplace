@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| Smart Contract (Hoodi) | [`0x544A1e1c5ed8c03125f91E7e00920A44891dfDb3`](https://hoodi.etherscan.io/address/0x544A1e1c5ed8c03125f91E7e00920A44891dfDb3) |
-| Admin (owner) | `0x28f1019229E1dD0c5De7a2b30c93C7Ed5fa514c0` |
+| Smart Contract (Hoodi) | [`0x300aa9213a0F159100f21864205a88368013240D`](https://hoodi.etherscan.io/address/0x300aa9213a0F159100f21864205a88368013240D) |
+| Admin (หลายคน · AccessControl) | `0x28f1019229E1dD0c5De7a2b30c93C7Ed5fa514c0` (ผู้ deploy), `0xa79545CC75a3866A52088546b55982F088A6f129` |
 | Supabase project | `chainpc` (`fzyffuwqssjmxkwcjzne`) |
 | ขอบเขตงานฉบับเต็ม | [docs/SCOPE.md](docs/SCOPE.md) |
 | การทดสอบ | [docs/TESTING.md](docs/TESTING.md) |
@@ -61,7 +61,7 @@ ChainPC ใช้ Smart Contract เป็นคนกลางที่ **ไ�
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Smart Contract | Solidity 0.8.28 · OpenZeppelin (Ownable, Pausable, ReentrancyGuard) · Hardhat |
+| Smart Contract | Solidity 0.8.28 · OpenZeppelin (AccessControlEnumerable, Pausable, ReentrancyGuard) · Hardhat |
 | Frontend | React 19 · Vite · TypeScript · Tailwind CSS 4 · wagmi 2 / viem · TanStack Query · Zustand |
 | Backend | Supabase (PostgreSQL + RLS, Auth Web3, Storage, Edge Functions, pg_cron) |
 | Wallet / Network | MetaMask · Ethereum Hoodi Testnet (chainId 560048) |
@@ -117,8 +117,8 @@ npm run coverage
 ```
 
 **Deploy ใหม่ (ทางที่แนะนำ: Remix + MetaMask — ไม่ต้องใช้ private key)**
-1. เปิด `contracts/remix/PCMarketplace.flat.sol` ใน [Remix](https://remix.ethereum.org) → Compile 0.8.28, Optimizer 200, EVM `paris`
-2. Deploy ด้วย **Injected Provider – MetaMask** ค่า constructor: `feeBps, shipWindowSec, confirmWindowSec` เช่น `200, 120, 120` (สาธิต) หรือ `200, 259200, 604800` (ใช้งานจริง)
+1. เปิด `contracts/remix/PCMarketplace.flat.sol` ใน [Remix](https://remix.ethereum.org) → Compile 0.8.28, Optimizer 200, EVM `cancun`
+2. Deploy ด้วย **Injected Provider – MetaMask** ค่า constructor: `feeBps, shipWindowSec, confirmWindowSec, extraAdmins` เช่น `200, 120, 120, ["0x..."]` (สาธิต) หรือ `200, 259200, 604800, []` (ใช้งานจริง)
 3. นำเข้าโปรเจกต์: `CONTRACT_ADDRESS=0x... npm run import:hoodi` (ตรวจ owner/ค่าตั้งค่า/bytecode แล้วอัปเดต ABI ให้เว็บและ Edge Function)
 
 > หรือใช้ `npm run deploy:hoodi` ถ้าใส่ `DEPLOYER_PRIVATE_KEY` ของบัญชีทดสอบใน `contracts/.env`
@@ -169,4 +169,4 @@ cd web && npm run healthcheck
 - ใช้บน **testnet** เท่านั้น (ไม่ได้ audit สำหรับเงินจริง)
 - ไม่ได้เชื่อมระบบขนส่งจริง (ผู้ขายกรอกเลขพัสดุเอง)
 - รีวิวเก็บใน Supabase — ผู้ดูแลฐานข้อมูลแก้ไขได้ (เลือกความสะดวกของผู้ใช้แทนความถาวร ดู SCOPE ข้อ 8)
-- ฟังก์ชัน `leaveReview` ยังอยู่ใน contract ที่ deploy แล้วแต่ไม่ได้ใช้
+- Admin หลายคนจัดการผ่าน Admin Panel → ผู้ดูแลระบบ (เพิ่ม/ถอดได้เฉพาะผู้ deploy ที่มี DEFAULT_ADMIN_ROLE)

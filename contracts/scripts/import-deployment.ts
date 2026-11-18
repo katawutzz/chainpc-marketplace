@@ -7,7 +7,7 @@ import { CONTRACTS_ROOT, exportToWeb, writeDeployment } from "./lib/deployments"
  *
  *   CONTRACT_ADDRESS=0x... npx hardhat run scripts/import-deployment.ts --network hoodi
  *
- * - อ่านค่าจาก chain (owner, fee, deadlines) เพื่อตรวจว่าเป็น PCMarketplace จริง
+ * - อ่านค่าจาก chain (Admin, fee, deadlines) เพื่อตรวจว่าเป็น PCMarketplace จริง
  * - เทียบ bytecode กับที่ compile ในโปรเจกต์ (ไม่นับส่วน metadata ท้ายไฟล์)
  * - หาธุรกรรมที่ deploy จาก block ล่าสุดย้อนหลัง (SEARCH_BLOCKS, ค่าเริ่มต้น 2000 ≈ 6.6 ชม.)
  * - เขียน deployments/<network>.json และ web/src/contracts/pcMarketplace.ts
@@ -32,8 +32,8 @@ async function main() {
 
   // 1) อ่านค่าจาก contract
   const market = await ethers.getContractAt("PCMarketplace", checksummed);
-  const [owner, feeBps, shipWindow, confirmWindow, productCount, orderCount] = await Promise.all([
-    market.owner(),
+  const [admins, feeBps, shipWindow, confirmWindow, productCount, orderCount] = await Promise.all([
+    market.getAdmins(),
     market.feeBps(),
     market.shipWindow(),
     market.confirmWindow(),
@@ -42,7 +42,7 @@ async function main() {
   ]);
   console.log(`เครือข่าย       : ${network.name} (chainId ${chainId})`);
   console.log(`Contract       : ${checksummed}`);
-  console.log(`Admin (owner)  : ${owner}`);
+  console.log(`Admin          : ${admins.join(", ")}`);
   console.log(`ค่าธรรมเนียม     : ${Number(feeBps) / 100}%`);
   console.log(`ส่งของภายใน     : ${shipWindow} วินาที`);
   console.log(`ยืนยันภายใน     : ${confirmWindow} วินาที`);
@@ -58,15 +58,17 @@ async function main() {
   const latest = await provider.getBlockNumber();
   let txHash = "";
   let deployBlock = 0;
+  let deployer = "";
   console.log(`\nกำลังค้นหาธุรกรรม deploy ใน ${searchBlocks} block ล่าสุด...`);
   for (let b = latest; b > latest - searchBlocks && b > 0 && !txHash; b--) {
     const block = await provider.getBlock(b, true);
     if (!block) continue;
     for (const tx of block.prefetchedTransactions) {
-      if (tx.to !== null || ethers.getAddress(tx.from) !== ethers.getAddress(owner)) continue;
+      if (tx.to !== null) continue;
       const receipt = await provider.getTransactionReceipt(tx.hash);
       if (receipt?.contractAddress && ethers.getAddress(receipt.contractAddress) === checksummed) {
         txHash = tx.hash;
+        deployer = ethers.getAddress(tx.from);
         deployBlock = b;
         break;
       }
@@ -81,11 +83,11 @@ async function main() {
     network: network.name,
     chainId: Number(chainId),
     address: checksummed,
-    deployer: owner,
+    deployer,
     txHash,
     deployBlock,
     deployedAt: new Date(((await provider.getBlock(deployBlock))!.timestamp) * 1000).toISOString(),
-    constructorArgs: [Number(feeBps), Number(shipWindow), Number(confirmWindow)],
+    constructorArgs: [Number(feeBps), Number(shipWindow), Number(confirmWindow), admins.filter((a) => a !== deployer)],
   });
   console.log(`\nบันทึกข้อมูล     : ${path.relative(CONTRACTS_ROOT, file)}`);
   const webFile = exportToWeb();

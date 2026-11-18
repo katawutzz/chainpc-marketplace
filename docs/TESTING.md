@@ -4,7 +4,7 @@
 
 | ชุดทดสอบ | คำสั่ง | ผลล่าสุด (18 พ.ย. 2569) |
 |---|---|---|
-| Smart Contract (Hardhat) | `cd contracts && npm test` | ✅ 52 passing |
+| Smart Contract (Hardhat) | `cd contracts && npm test` | ✅ 53 passing |
 | Coverage | `cd contracts && npm run coverage` | ✅ Statements 100% · Branches 91.3% · Functions 100% · Lines 100% |
 | Type-check + Build เว็บ | `cd web && npm run build` | ✅ ผ่าน |
 | ระบบที่รันจริง (Hoodi + Supabase + RLS) | `cd web && npm run healthcheck` | ✅ ผ่าน 16/16 |

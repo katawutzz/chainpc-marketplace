@@ -45,7 +45,11 @@ async function main() {
   }
 
   const factory = await ethers.getContractFactory("PCMarketplace");
-  const contract = await factory.deploy(feeBps, shipWindow, confirmWindow);
+  // Admin เพิ่มเติม (นอกจากผู้ deploy) คั่นด้วย , เช่น EXTRA_ADMINS=0xabc...,0xdef...
+  const extraAdmins = (process.env.EXTRA_ADMINS ?? "").split(",").map((a) => a.trim()).filter(Boolean);
+  for (const a of extraAdmins) if (!ethers.isAddress(a)) throw new Error(`EXTRA_ADMINS มี address ไม่ถูกต้อง: ${a}`);
+  console.log(`Admin เพิ่มเติม : ${extraAdmins.length ? extraAdmins.join(", ") : "-"}`);
+  const contract = await factory.deploy(feeBps, shipWindow, confirmWindow, extraAdmins);
   const deployTx = contract.deploymentTransaction();
   console.log(`\nส่งธุรกรรมแล้ว  : ${deployTx?.hash}`);
   console.log("กำลังรอยืนยัน...");
@@ -69,7 +73,7 @@ async function main() {
     txHash: deployTx!.hash,
     deployBlock: receipt!.blockNumber,
     deployedAt: new Date().toISOString(),
-    constructorArgs: [feeBps, shipWindow, confirmWindow],
+    constructorArgs: [feeBps, shipWindow, confirmWindow, extraAdmins],
   });
   console.log(`บันทึกข้อมูล    : ${path.relative(CONTRACTS_ROOT, file)}`);
 
