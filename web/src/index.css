@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* ชุดสีของ ChainPC: น้ำเงินเข้ม (navy) + เขียวมิ้นต์ (mint) */
+@theme {
+  --font-sans: "IBM Plex Sans Thai", ui-sans-serif, system-ui, sans-serif;
+
+  --color-navy-950: #0a1320;
+  --color-navy-900: #0f1b2d;
+  --color-navy-800: #182a43;
+  --color-navy-700: #233a5a;
+
+  --color-mint-300: #6ee7b7;
+  --color-mint-400: #34d399;
+  --color-mint-500: #10b981;
+  --color-mint-600: #059669;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
