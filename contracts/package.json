@@ -9,7 +9,12 @@
     "coverage": "hardhat coverage",
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
-    "deploy:hoodi": "hardhat run scripts/deploy.ts --network hoodi"
+    "deploy:hoodi": "hardhat run scripts/deploy.ts --network hoodi",
+    "seed:local": "hardhat run scripts/seed.ts --network localhost",
+    "seed:hoodi": "hardhat run scripts/seed.ts --network hoodi",
+    "verify:hoodi": "hardhat run scripts/verify.ts --network hoodi",
+    "export:web": "hardhat run scripts/export-web.ts",
+    "import:hoodi": "hardhat run scripts/import-deployment.ts --network hoodi"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.2",

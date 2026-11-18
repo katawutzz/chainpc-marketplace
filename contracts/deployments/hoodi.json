@@ -1,0 +1,14 @@
+{
+  "network": "hoodi",
+  "chainId": 560048,
+  "address": "0x544A1e1c5ed8c03125f91E7e00920A44891dfDb3",
+  "deployer": "0x28f1019229E1dD0c5De7a2b30c93C7Ed5fa514c0",
+  "txHash": "0x47276b4ec3ecdc8872ccd075b6cf1fe27ac5fe51c63abba58a58b4921b4183d7",
+  "deployBlock": 4040032,
+  "deployedAt": "2026-11-18T10:44:48.000Z",
+  "constructorArgs": [
+    200,
+    120,
+    120
+  ]
+}

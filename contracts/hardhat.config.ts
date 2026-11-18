@@ -15,8 +15,10 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
     settings: {
+      // ตั้งให้ตรงกับค่าปกติของ Remix (paris + optimizer 200, ไม่ใช้ viaIR)
+      // เพื่อให้ bytecode ตรงกันไม่ว่าจะ deploy ด้วย Hardhat หรือ Remix + MetaMask
       optimizer: { enabled: true, runs: 200 },
-      viaIR: true,
+      evmVersion: "paris",
     },
   },
   networks: {

@@ -339,45 +339,60 @@ contract PCMarketplace is Ownable, Pausable, ReentrancyGuard {
 
         orderIds = new uint256[](n);
         uint256 grandTotal;
-        uint64 nowTs = uint64(block.timestamp);
-        uint64 shipDeadline = nowTs + shipWindow;
 
         for (uint256 i = 0; i < n; ++i) {
-            uint256 productId = productIds[i];
-            uint32 qty = quantities[i];
-            if (productId == 0 || productId > productCount) revert ProductNotFound(productId);
-
-            Product storage p = _products[productId];
-            if (!p.active || p.hidden || _sellers[p.seller].banned) revert ProductUnavailable(productId);
-            if (p.seller == msg.sender) revert CannotBuyOwnProduct(productId);
-            if (qty == 0) revert InvalidQuantity();
-            if (p.stock < qty) revert InsufficientStock(productId, p.stock, qty);
-
-            p.stock -= qty;
-            uint256 lineTotal = p.price * qty;
+            uint256 lineTotal;
+            (orderIds[i], lineTotal) = _placeOrder(productIds[i], quantities[i]);
             grandTotal += lineTotal;
-
-            uint256 orderId = ++orderCount;
-            Order storage o = _orders[orderId];
-            o.id = orderId;
-            o.productId = productId;
-            o.buyer = msg.sender;
-            o.seller = p.seller;
-            o.quantity = qty;
-            o.unitPrice = p.price;
-            o.total = lineTotal;
-            o.feeBps = feeBps;
-            o.confirmWindow = confirmWindow;
-            o.status = OrderStatus.Paid;
-            o.paidAt = nowTs;
-            o.shipDeadline = shipDeadline;
-
-            orderIds[i] = orderId;
-            emit OrderPlaced(orderId, productId, msg.sender, p.seller, qty, p.price, lineTotal, feeBps, shipDeadline);
         }
 
         if (msg.value != grandTotal) revert IncorrectPayment(grandTotal, msg.value);
         totalEscrow += grandTotal;
+    }
+
+    /// @dev ตรวจสินค้า ตัดสต็อก และสร้างคำสั่งซื้อ 1 รายการ (แยกออกมาเพื่อไม่ให้ stack ลึกเกิน)
+    function _placeOrder(uint256 productId, uint32 qty) private returns (uint256 orderId, uint256 lineTotal) {
+        if (productId == 0 || productId > productCount) revert ProductNotFound(productId);
+
+        Product storage p = _products[productId];
+        if (!p.active || p.hidden || _sellers[p.seller].banned) revert ProductUnavailable(productId);
+        if (p.seller == msg.sender) revert CannotBuyOwnProduct(productId);
+        if (qty == 0) revert InvalidQuantity();
+        if (p.stock < qty) revert InsufficientStock(productId, p.stock, qty);
+
+        p.stock -= qty;
+        lineTotal = p.price * qty;
+
+        orderId = ++orderCount;
+        Order storage o = _orders[orderId];
+        o.id = orderId;
+        o.productId = productId;
+        o.buyer = msg.sender;
+        o.seller = p.seller;
+        o.quantity = qty;
+        o.unitPrice = p.price;
+        o.total = lineTotal;
+        o.feeBps = feeBps;
+        o.confirmWindow = confirmWindow;
+        o.status = OrderStatus.Paid;
+        o.paidAt = uint64(block.timestamp);
+        o.shipDeadline = uint64(block.timestamp) + shipWindow;
+
+        _emitOrderPlaced(o);
+    }
+
+    function _emitOrderPlaced(Order storage o) private {
+        emit OrderPlaced(
+            o.id,
+            o.productId,
+            o.buyer,
+            o.seller,
+            o.quantity,
+            o.unitPrice,
+            o.total,
+            o.feeBps,
+            o.shipDeadline
+        );
     }
 
     /// @notice ยืนยันว่าได้รับของแล้ว → ปลดเงินให้ผู้ขาย
