@@ -6,9 +6,11 @@ import { WagmiProvider } from "wagmi";
 import { Layout } from "./components/Layout";
 import { AuthProvider } from "./hooks/useAuth";
 import { wagmiConfig } from "./lib/wagmi";
+import { AccountPage } from "./pages/AccountPage";
+import { AdminPage } from "./pages/AdminPage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
-import { ComingSoon, NotFound } from "./pages/ComingSoon";
+import { NotFound } from "./pages/NotFound";
 import { HomePage } from "./pages/HomePage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { ProductFormPage } from "./pages/ProductFormPage";
@@ -34,8 +36,8 @@ const router = createBrowserRouter([
       { path: "/seller", element: <SellerCenter /> },
       { path: "/seller/products/new", element: <ProductFormPage /> },
       { path: "/seller/products/:id/edit", element: <ProductFormPage /> },
-      { path: "/account", element: <ComingSoon title="บัญชีของฉัน" phase={7} /> },
-      { path: "/admin", element: <ComingSoon title="Admin Panel" phase={7} /> },
+      { path: "/account", element: <AccountPage /> },
+      { path: "/admin", element: <AdminPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },
