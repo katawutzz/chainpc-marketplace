@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets (ห้าม commit)
+.env
+.env.*
+!.env.example
+
+# Hardhat
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+contracts/coverage/
+contracts/coverage.json
+contracts/ignition/deployments/chain-31337/
+
+# Web build
+web/dist/
+web/.vite/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude Code local settings
+.claude/settings.local.json
