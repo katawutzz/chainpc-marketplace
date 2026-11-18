@@ -2,10 +2,29 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAddress, type Address } from "viem";
-import { useAccount, useReadContracts } from "wagmi";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
+import {
+  Ban,
+  BadgeCheck,
+  CircleCheck,
+  ExternalLink,
+
+  Flag,
+  HandCoins,
+  MapPin,
+  Package,
+  RotateCcw,
+  Settings as SettingsIcon,
+  ShieldAlert,
+  ShieldCheck,
+  Store,
+  Truck,
+  Users,
+} from "lucide-react";
 import { RequireWallet } from "../components/RequireWallet";
+import { NavAvatar, SideNavLayout } from "../components/SideNavLayout";
 import { EmptyState, EthAmount, ProductImage, Spinner, Stars, VerifiedBadge } from "../components/ui";
-import { useIsAdmin } from "../hooks/useMarket";
+import { ADMIN_ROLE, useIsAdmin, useIsSuperAdmin } from "../hooks/useMarket";
 import { formatRemaining } from "../hooks/useNow";
 import { explorer, marketplace } from "../lib/chain";
 import { categoryOf, formatEth, formatThaiDate, ratingOf, shortAddress } from "../lib/format";
@@ -13,7 +32,7 @@ import { textHash } from "../lib/hash";
 import { supabase, type Tables } from "../lib/supabase";
 import { toast, useMarketplaceTx } from "../lib/tx";
 
-type Tab = "disputes" | "products" | "sellers" | "settings";
+type Tab = "disputes" | "products" | "sellers" | "admins" | "settings";
 
 export function AdminPage() {
   return (
@@ -27,7 +46,7 @@ function AdminGate() {
   const isAdmin = useIsAdmin();
   if (!isAdmin) {
     return (
-      <EmptyState icon="🛡️" title="เฉพาะ Admin">
+      <EmptyState icon={ShieldAlert} title="เฉพาะ Admin">
         หน้านี้ใช้ได้เฉพาะ wallet ที่เป็น owner ของ Smart Contract เท่านั้น
       </EmptyState>
     );
@@ -67,7 +86,8 @@ function useContractState() {
 }
 
 function Admin() {
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
+  const { address } = useAccount();
   const tab = (params.get("tab") as Tab) || "disputes";
   const state = useContractState();
   const { data: disputeCount = 0 } = useQuery({
@@ -85,56 +105,48 @@ function Admin() {
     { label: "เงินที่ล็อกใน Escrow", value: `${formatEth(state.totalEscrow)} ETH` },
     { label: "ค่าธรรมเนียมสะสม", value: `${formatEth(state.accumulatedFees)} ETH` },
   ];
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "disputes", label: `🚩 แจ้งปัญหา${disputeCount ? ` (${disputeCount})` : ""}` },
-    { key: "products", label: "📦 สินค้า" },
-    { key: "sellers", label: "🏪 ผู้ขาย" },
-    { key: "settings", label: "⚙️ ตั้งค่าระบบ" },
-  ];
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">🛡️ Admin Panel</h1>
-        <span
-          className={`rounded-full px-3 py-1 text-sm font-semibold ${state.paused ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}
-        >
-          {state.paused ? "⏸ ระบบหยุดชั่วคราว" : "● ระบบเปิดใช้งาน"}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <SideNavLayout
+      header={
+        <NavAvatar
+          address={address ?? "0x00"}
+          title="Admin Panel"
+          subtitle={
+            <span className={state.paused ? "text-rose-600" : "text-emerald-600"}>{state.paused ? "ระบบหยุดชั่วคราว" : "ระบบเปิดใช้งาน"}</span>
+          }
+        />
+      }
+      items={[
+        { to: "/admin?tab=disputes", label: "แจ้งปัญหา", icon: Flag, badge: disputeCount },
+        { to: "/admin?tab=products", label: "สินค้า", icon: Package },
+        { to: "/admin?tab=sellers", label: "ผู้ขาย", icon: Store },
+        { to: "/admin?tab=admins", label: "ผู้ดูแลระบบ", icon: Users },
+        { to: "/admin?tab=settings", label: "ตั้งค่าระบบ", icon: SettingsIcon },
+      ]}
+    >
+    <div className="space-y-3">
+      <div className="card grid grid-cols-2 md:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div key={s.label} className="border-b border-r border-slate-100 px-5 py-5">
             <p className="text-sm text-slate-500">{s.label}</p>
-            <p className="mt-1 text-xl font-bold">{state.loaded ? s.value : "…"}</p>
+            <p className="mt-1 text-xl text-slate-900">{state.loaded ? s.value : "…"}</p>
           </div>
         ))}
       </div>
-      <p className="text-xs text-slate-500">
-        ทุกการกระทำของ Admin เป็นธุรกรรมบน Blockchain และปล่อย Event ที่ทุกคนตรวจสอบย้อนหลังได้บน{" "}
-        <a href={explorer.address(marketplace.address)} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
-          Etherscan ↗
+      <p className="flex items-center gap-1 text-xs text-slate-500">
+        <ShieldCheck className="h-3.5 w-3.5" /> ทุกการกระทำของ Admin เป็นธุรกรรมบน Blockchain และตรวจสอบย้อนหลังได้บน
+        <a href={explorer.address(marketplace.address)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-sky-700 hover:underline">
+          Etherscan <ExternalLink className="h-3 w-3" />
         </a>
       </p>
-
-      <nav className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setParams({ tab: t.key })}
-            className={`-mb-px shrink-0 border-b-2 px-4 py-2 text-sm font-medium ${tab === t.key ? "border-mint-500 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-800"}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
 
       {tab === "disputes" && <Disputes />}
       {tab === "products" && <Products />}
       {tab === "sellers" && <Sellers />}
+      {tab === "admins" && <Admins />}
       {tab === "settings" && <Settings state={state} />}
     </div>
+    </SideNavLayout>
   );
 }
 
@@ -174,13 +186,13 @@ function Disputes() {
   return (
     <div className="space-y-4">
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" className="accent-mint-600" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />
+        <input type="checkbox" className="accent-brand-600" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />
         แสดงเรื่องที่ตัดสินแล้วด้วย
       </label>
       {isLoading ? (
         <Spinner />
       ) : !data?.length ? (
-        <EmptyState icon="✅" title="ไม่มีเรื่องแจ้งปัญหาที่รอตัดสิน" />
+        <EmptyState icon={CircleCheck} title="ไม่มีเรื่องแจ้งปัญหาที่รอตัดสิน" />
       ) : (
         data.map((o) => <DisputeCard key={o.id} order={o} />)
       )}
@@ -221,7 +233,7 @@ function DisputeCard({ order }: { order: DisputeOrder }) {
   const resolved = order.status !== 3;
 
   return (
-    <article className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+    <article className="card">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5 text-sm">
         <span>
           คำสั่งซื้อ <b>#{order.id}</b> · {order.products?.title ?? `สินค้า #${order.product_id}`}
@@ -240,28 +252,28 @@ function DisputeCard({ order }: { order: DisputeOrder }) {
               {shortAddress(order.seller)}
             </Link>
           </p>
-          <p>📦 เลขพัสดุ: <b className="font-mono">{order.tracking_no ?? "-"}</b> · จัดส่ง {formatThaiDate(order.shipped_at)}</p>
+          <p className="flex items-center gap-1.5"><Truck className="h-4 w-4 text-slate-500" /> เลขพัสดุ: <b className="font-mono">{order.tracking_no ?? "-"}</b> · จัดส่ง {formatThaiDate(order.shipped_at)}</p>
           {order.order_shipping && (
-            <p className="rounded-lg bg-slate-50 p-2">
-              🏠 {order.order_shipping.recipient_name} · {order.order_shipping.phone}
+            <p className="rounded-sm bg-slate-50 p-2">
+              <MapPin className="mr-1 inline h-4 w-4 text-brand-500" />{order.order_shipping.recipient_name} · {order.order_shipping.phone}
               <br />
               <span className="text-slate-600">{order.order_shipping.address}</span>
             </p>
           )}
         </div>
         <div className="space-y-2 text-sm">
-          <p className="font-semibold">🚩 ปัญหาที่ผู้ซื้อแจ้ง</p>
+          <p className="font-semibold"><span className="inline-flex items-center gap-1.5"><Flag className="h-4 w-4 text-rose-500" /> ปัญหาที่ผู้ซื้อแจ้ง</span></p>
           {d ? (
             <>
-              <p className="whitespace-pre-line rounded-lg bg-rose-50 p-2 text-rose-900">{d.reason}</p>
+              <p className="whitespace-pre-line rounded-sm bg-rose-50 p-2 text-rose-900">{d.reason}</p>
               <p className={`text-xs ${reasonVerified ? "text-emerald-700" : "text-rose-600"}`}>
-                {reasonVerified ? "✔ ข้อความตรงกับ hash บน Blockchain" : "⚠️ ข้อความไม่ตรงกับ hash บน Blockchain"}
+                {reasonVerified ? "ข้อความตรงกับ hash บน Blockchain" : "ข้อความไม่ตรงกับ hash บน Blockchain"}
               </p>
               {evidenceUrls && evidenceUrls.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {evidenceUrls.map((u) => (
                     <a key={u} href={u} target="_blank" rel="noreferrer">
-                      <img src={u} alt="หลักฐาน" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200" />
+                      <img src={u} alt="หลักฐาน" className="h-20 w-20 rounded-sm object-cover ring-1 ring-slate-200" />
                     </a>
                   ))}
                 </div>
@@ -285,21 +297,21 @@ function DisputeCard({ order }: { order: DisputeOrder }) {
               onChange={(e) => setNote(e.target.value)}
               maxLength={280}
               placeholder="เหตุผลการตัดสิน (บันทึกบน Blockchain)"
-              className="min-w-0 flex-1 rounded-full border border-slate-300 px-4 py-1.5 text-sm outline-none focus:border-mint-500"
+              className="min-w-0 flex-1 rounded-sm border border-slate-300 px-4 py-1.5 text-sm outline-none focus:border-brand-500"
             />
             <button
               disabled={pending}
               onClick={() => void resolve(true)}
-              className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-50"
+              className="rounded-sm bg-white px-4 py-1.5 text-sm font-semibold text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-50"
             >
-              ↩️ คืนเงินผู้ซื้อ
+              <RotateCcw className="mr-1 inline h-4 w-4" />คืนเงินผู้ซื้อ
             </button>
             <button
               disabled={pending}
               onClick={() => void resolve(false)}
-              className="rounded-full bg-mint-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-mint-600 disabled:opacity-50"
+              className="rounded-sm bg-brand-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
             >
-              💰 จ่ายเงินผู้ขาย
+              <HandCoins className="mr-1 inline h-4 w-4" />จ่ายเงินผู้ขาย
             </button>
           </div>
         )}
@@ -335,9 +347,9 @@ function Products() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="ค้นหาชื่อ / address ผู้ขาย / #id"
-          className="min-w-0 flex-1 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm outline-none focus:border-mint-500"
+          className="min-w-0 flex-1 rounded-sm border border-slate-300 bg-white px-4 py-1.5 text-sm outline-none focus:border-brand-500"
         />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as "all" | "hidden")} className="rounded-full border border-slate-300 bg-white px-3 text-sm">
+        <select value={filter} onChange={(e) => setFilter(e.target.value as "all" | "hidden")} className="rounded-sm border border-slate-300 bg-white px-3 text-sm">
           <option value="all">ทั้งหมด</option>
           <option value="hidden">เฉพาะที่ถูกซ่อน</option>
         </select>
@@ -345,14 +357,14 @@ function Products() {
       {isLoading ? (
         <Spinner />
       ) : rows.length === 0 ? (
-        <EmptyState icon="📦" title="ไม่มีสินค้า" />
+        <EmptyState icon={Package} title="ไม่มีสินค้า" />
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+        <ul className="divide-y divide-slate-100 overflow-hidden card">
           {rows.map((p) => {
             const details = Array.isArray(p.product_details) ? p.product_details[0] : p.product_details;
             return (
               <li key={p.id} className="flex flex-wrap items-center gap-3 p-3">
-                <ProductImage images={details?.images} category={p.category} className="h-12 w-12 rounded-lg" iconClass="text-2xl" />
+                <ProductImage images={details?.images} category={p.category} className="h-12 w-12 rounded-sm" iconClass="text-2xl" />
                 <div className="min-w-0 flex-1 text-sm">
                   <Link to={`/product/${p.id}`} className="line-clamp-1 font-medium hover:text-sky-700">
                     #{p.id} {p.title}
@@ -372,9 +384,9 @@ function Products() {
                       args: [BigInt(p.id), !p.hidden],
                     })
                   }
-                  className={`rounded-full px-3 py-1 text-sm ring-1 disabled:opacity-50 ${p.hidden ? "ring-slate-300 hover:bg-slate-50" : "text-rose-700 ring-rose-300 hover:bg-rose-50"}`}
+                  className={`rounded-sm px-3 py-1 text-sm ring-1 disabled:opacity-50 ${p.hidden ? "ring-slate-300 hover:bg-slate-50" : "text-rose-700 ring-rose-300 hover:bg-rose-50"}`}
                 >
-                  {p.hidden ? "เลิกซ่อน" : "🚫 ซ่อนสินค้า"}
+                  {p.hidden ? "เลิกซ่อน" : "ซ่อนสินค้า"}
                 </button>
               </li>
             );
@@ -421,27 +433,27 @@ function Sellers() {
 
   return (
     <div className="space-y-3">
-      <form onSubmit={submitLookup} className="flex flex-wrap gap-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+      <form onSubmit={submitLookup} className="flex flex-wrap gap-2 card p-3">
         <input
           value={lookup}
           onChange={(e) => setLookup(e.target.value)}
           placeholder="จัดการ address อื่น: 0x..."
-          className="min-w-0 flex-1 rounded-full border border-slate-300 px-4 py-1.5 font-mono text-sm outline-none focus:border-mint-500"
+          className="min-w-0 flex-1 rounded-sm border border-slate-300 px-4 py-1.5 font-mono text-sm outline-none focus:border-brand-500"
         />
-        <button type="button" disabled={!lookupValid || pending} onClick={() => void setFlag(lookup.trim(), "verified", true)} className="rounded-full px-3 py-1 text-sm ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-40">
-          ✔ Verified
+        <button type="button" disabled={!lookupValid || pending} onClick={() => void setFlag(lookup.trim(), "verified", true)} className="rounded-sm px-3 py-1 text-sm ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-40">
+          <BadgeCheck className="mr-1 inline h-4 w-4" />Verified
         </button>
-        <button type="button" disabled={!lookupValid || pending} onClick={() => void setFlag(lookup.trim(), "banned", true)} className="rounded-full px-3 py-1 text-sm text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-40">
-          ⛔ แบน
+        <button type="button" disabled={!lookupValid || pending} onClick={() => void setFlag(lookup.trim(), "banned", true)} className="rounded-sm px-3 py-1 text-sm text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-40">
+          <Ban className="mr-1 inline h-4 w-4" />แบน
         </button>
       </form>
 
       {isLoading ? (
         <Spinner />
       ) : !data?.length ? (
-        <EmptyState icon="🏪" title="ยังไม่มีผู้ขาย" />
+        <EmptyState icon={Store} title="ยังไม่มีผู้ขาย" />
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+        <ul className="divide-y divide-slate-100 overflow-hidden card">
           {data.map((s) => {
             const rating = ratingOf(s);
             return (
@@ -459,8 +471,8 @@ function Sellers() {
                   </p>
                   <Stars value={rating.avg} count={rating.count} />
                 </div>
-                <button disabled={pending} onClick={() => void setFlag(s.address, "verified", !s.verified)} className="rounded-full px-3 py-1 ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-50">
-                  {s.verified ? "ถอน Verified" : "✔ ให้ Verified"}
+                <button disabled={pending} onClick={() => void setFlag(s.address, "verified", !s.verified)} className="rounded-sm px-3 py-1 ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-50">
+                  {s.verified ? "ถอน Verified" : "ให้ Verified"}
                 </button>
                 <button
                   disabled={pending}
@@ -468,9 +480,9 @@ function Sellers() {
                     if (s.banned || confirm(`แบนผู้ขาย ${shortAddress(s.address)}?\nสินค้าทั้งหมดจะไม่แสดงและลงขายใหม่ไม่ได้ (คำสั่งซื้อเดิมยังดำเนินต่อได้)`))
                       void setFlag(s.address, "banned", !s.banned);
                   }}
-                  className={`rounded-full px-3 py-1 ring-1 disabled:opacity-50 ${s.banned ? "ring-slate-300 hover:bg-slate-50" : "text-rose-700 ring-rose-300 hover:bg-rose-50"}`}
+                  className={`rounded-sm px-3 py-1 ring-1 disabled:opacity-50 ${s.banned ? "ring-slate-300 hover:bg-slate-50" : "text-rose-700 ring-rose-300 hover:bg-rose-50"}`}
                 >
-                  {s.banned ? "ปลดแบน" : "⛔ แบน"}
+                  {s.banned ? "ปลดแบน" : "แบน"}
                 </button>
               </li>
             );
@@ -478,6 +490,78 @@ function Sellers() {
         </ul>
       )}
     </div>
+  );
+}
+
+// ─────────────────────────── ผู้ดูแลระบบ ───────────────────────────
+
+function Admins() {
+  const { address } = useAccount();
+  const canManage = useIsSuperAdmin();
+  const { send, pending } = useMarketplaceTx();
+  const [newAdmin, setNewAdmin] = useState("");
+  const { data: admins, refetch } = useReadContract({
+    address: marketplace.address,
+    abi: marketplace.abi,
+    functionName: "getAdmins",
+    chainId: marketplace.chainId,
+    query: { refetchInterval: 15_000 },
+  });
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    const a = newAdmin.trim();
+    if (!isAddress(a)) return toast.error("address ไม่ถูกต้อง");
+    const r = await send(`เพิ่ม Admin ${shortAddress(a)}`, { functionName: "grantRole", args: [ADMIN_ROLE, a as Address] });
+    if (r) {
+      setNewAdmin("");
+      void refetch();
+    }
+  };
+  const remove = async (a: string) => {
+    const self = a.toLowerCase() === address?.toLowerCase();
+    if (!confirm(self ? "ถอดสิทธิ์ Admin ของตัวเอง? คุณจะเข้า Admin Panel ไม่ได้อีก" : `ถอด ${shortAddress(a)} ออกจาก Admin?`)) return;
+    const r = self
+      ? await send("สละสิทธิ์ Admin", { functionName: "renounceRole", args: [ADMIN_ROLE, a as Address] })
+      : await send(`ถอด Admin ${shortAddress(a)}`, { functionName: "revokeRole", args: [ADMIN_ROLE, a as Address] });
+    if (r) void refetch();
+  };
+
+  return (
+    <section className="card">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h2 className="text-lg">ผู้ดูแลระบบ ({admins?.length ?? "…"})</h2>
+        <p className="text-sm text-slate-500">ทุกคนในรายชื่อนี้ใช้ Admin Panel ได้เท่ากัน — บันทึกบน Blockchain (AccessControl)</p>
+      </div>
+      <ul className="divide-y divide-slate-100">
+        {admins?.map((a) => (
+          <li key={a} className="flex flex-wrap items-center gap-3 px-6 py-3 text-sm">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-50 text-xs font-semibold text-brand-600">{a.slice(2, 4).toUpperCase()}</span>
+            <a href={explorer.address(a)} target="_blank" rel="noreferrer" className="min-w-0 flex-1 break-all font-mono hover:text-brand-600">
+              {a}
+            </a>
+            {a.toLowerCase() === address?.toLowerCase() && <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs text-slate-600">คุณ</span>}
+            {(canManage || a.toLowerCase() === address?.toLowerCase()) && (
+              <button disabled={pending} onClick={() => void remove(a)} className="rounded-sm px-3 py-1 text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-50">
+                {a.toLowerCase() === address?.toLowerCase() ? "สละสิทธิ์" : "ถอดออก"}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {canManage ? (
+        <form onSubmit={add} className="flex flex-wrap gap-2 border-t border-slate-100 px-6 py-4">
+          <input value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} placeholder="address ของ Admin ใหม่ 0x..." className="input min-w-0 flex-1 font-mono" />
+          <button disabled={pending || !isAddress(newAdmin.trim())} className="h-10 rounded-sm bg-brand-500 px-5 text-sm text-white hover:bg-brand-600 disabled:opacity-50">
+            เพิ่ม Admin
+          </button>
+        </form>
+      ) : (
+        <p className="border-t border-slate-100 px-6 py-4 text-xs text-slate-500">
+          เฉพาะผู้ที่ deploy contract (DEFAULT_ADMIN_ROLE) เพิ่มหรือถอด Admin คนอื่นได้ — คุณสละสิทธิ์ของตัวเองได้
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -514,9 +598,9 @@ function Settings({ state }: { state: ReturnType<typeof useContractState> }) {
   const feeBps = Math.round(Number(fee) * 100);
   const shipSec = Math.round(Number(ship.value) * ship.unit);
   const confirmSec = Math.round(Number(confirmW.value) * confirmW.unit);
-  const card = "space-y-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200";
-  const input = "w-28 rounded-md border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-mint-500";
-  const btn = "rounded-full bg-navy-900 px-4 py-1.5 text-sm font-semibold text-white hover:bg-navy-800 disabled:opacity-50";
+  const card = "card space-y-3 p-4";
+  const input = "w-28 rounded-md border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500";
+  const btn = "rounded-sm bg-slate-800 px-4 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50";
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -567,7 +651,7 @@ function Settings({ state }: { state: ReturnType<typeof useContractState> }) {
           </button>
           <button
             type="button"
-            className="rounded-full px-3 py-1.5 text-sm ring-1 ring-slate-300 hover:bg-slate-50"
+            className="rounded-sm px-3 py-1.5 text-sm ring-1 ring-slate-300 hover:bg-slate-50"
             onClick={() => {
               setShip({ value: "2", unit: 60 });
               setConfirmW({ value: "2", unit: 60 });
@@ -577,7 +661,7 @@ function Settings({ state }: { state: ReturnType<typeof useContractState> }) {
           </button>
           <button
             type="button"
-            className="rounded-full px-3 py-1.5 text-sm ring-1 ring-slate-300 hover:bg-slate-50"
+            className="rounded-sm px-3 py-1.5 text-sm ring-1 ring-slate-300 hover:bg-slate-50"
             onClick={() => {
               setShip({ value: "3", unit: 86400 });
               setConfirmW({ value: "7", unit: 86400 });
@@ -597,7 +681,7 @@ function Settings({ state }: { state: ReturnType<typeof useContractState> }) {
           value={feeTo}
           onChange={(e) => setFeeTo(e.target.value)}
           placeholder="address ปลายทาง (เว้นว่าง = กระเป๋าตัวเอง)"
-          className="w-full rounded-md border border-slate-300 px-3 py-1.5 font-mono text-sm outline-none focus:border-mint-500"
+          className="w-full rounded-md border border-slate-300 px-3 py-1.5 font-mono text-sm outline-none focus:border-brand-500"
         />
         <button
           className={btn}
@@ -625,7 +709,7 @@ function Settings({ state }: { state: ReturnType<typeof useContractState> }) {
                 state.refetch(),
               );
           }}
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold disabled:opacity-50 ${state.paused ? "bg-mint-500 text-white hover:bg-mint-600" : "bg-rose-600 text-white hover:bg-rose-700"}`}
+          className={`rounded-sm px-4 py-1.5 text-sm font-semibold disabled:opacity-50 ${state.paused ? "bg-brand-500 text-white hover:bg-brand-600" : "bg-rose-600 text-white hover:bg-rose-700"}`}
         >
           {state.paused ? "▶ เปิดระบบอีกครั้ง" : "⏸ หยุดระบบชั่วคราว"}
         </button>

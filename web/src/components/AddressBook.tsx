@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase, type Tables } from "../lib/supabase";
 import { toast } from "../lib/tx";
-import { Spinner } from "./ui";
+import { Lock, Plus } from "lucide-react";
+import { Button, Spinner } from "./ui";
 
 export type AddressRow = Tables<"addresses">;
 
@@ -43,17 +44,17 @@ export function AddressPicker({
       {addresses?.map((a) => (
         <label
           key={a.id}
-          className={`flex cursor-pointer gap-3 rounded-lg p-3 ring-1 ${selectedId === a.id ? "bg-mint-500/5 ring-2 ring-mint-500" : "ring-slate-200 hover:bg-slate-50"}`}
+          className={`flex cursor-pointer gap-3 rounded-sm border p-3 ${selectedId === a.id ? "border-brand-500 bg-brand-50/40" : "border-slate-200 hover:bg-slate-50"}`}
         >
-          <input type="radio" name="address" className="mt-1 accent-mint-600" checked={selectedId === a.id} onChange={() => onSelect(a)} />
+          <input type="radio" name="address" className="mt-1 accent-brand-500" checked={selectedId === a.id} onChange={() => onSelect(a)} />
           <span className="text-sm">
-            <span className="font-semibold">{a.recipient_name}</span> · {a.phone}
-            {a.is_default && <span className="ml-2 rounded bg-slate-100 px-1.5 text-xs text-slate-600">ค่าเริ่มต้น</span>}
+            <span className="font-medium">{a.recipient_name}</span> <span className="text-slate-500">| {a.phone}</span>
+            {a.is_default && <span className="ml-2 border border-brand-500 px-1 text-[11px] text-brand-500">ค่าเริ่มต้น</span>}
             <span className="block text-slate-600">{formatAddress(a)}</span>
           </span>
         </label>
       ))}
-      {(adding || addresses?.length === 0) ? (
+      {adding || addresses?.length === 0 ? (
         <AddressForm
           isFirst={addresses?.length === 0}
           onSaved={(a) => {
@@ -63,9 +64,9 @@ export function AddressPicker({
           onCancel={addresses?.length ? () => setAdding(false) : undefined}
         />
       ) : (
-        <button onClick={() => setAdding(true)} className="text-sm text-sky-700 hover:underline">
-          + เพิ่มที่อยู่ใหม่
-        </button>
+        <Button variant="secondary" size="sm" icon={Plus} onClick={() => setAdding(true)}>
+          เพิ่มที่อยู่ใหม่
+        </Button>
       )}
     </div>
   );
@@ -102,10 +103,10 @@ export function AddressForm({
     onSaved(data);
   };
 
-  const input = "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-mint-500";
+  const input = "input";
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200">
-      <p className="text-sm font-semibold">ที่อยู่จัดส่งใหม่</p>
+    <form onSubmit={submit} className="animate-pop space-y-3 rounded-sm border border-slate-200 bg-white p-4">
+      <p className="text-base">ที่อยู่ใหม่</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <input required maxLength={100} placeholder="ชื่อผู้รับ" value={form.recipient_name} onChange={set("recipient_name")} className={input} />
         <input required minLength={6} maxLength={20} placeholder="เบอร์โทร" inputMode="tel" value={form.phone} onChange={set("phone")} className={input} />
@@ -116,17 +117,16 @@ export function AddressForm({
         <input maxLength={100} placeholder="จังหวัด" value={form.province} onChange={set("province")} className={input} />
         <input maxLength={10} placeholder="รหัสไปรษณีย์" inputMode="numeric" value={form.postcode} onChange={set("postcode")} className={input} />
       </div>
-      <p className="text-xs text-slate-500">🔐 ที่อยู่เก็บใน Supabase (ไม่อยู่บน Blockchain) — ผู้ขายเห็นเฉพาะคำสั่งซื้อที่ส่งถึงเขา</p>
-      <div className="flex gap-2">
-        <button disabled={saving} className="inline-flex items-center gap-2 rounded-full bg-navy-900 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60">
-          {saving && <Spinner className="h-3.5 w-3.5" />}
-          บันทึกที่อยู่
-        </button>
+      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+        <Lock className="h-3.5 w-3.5" /> ที่อยู่เก็บใน Supabase (ไม่อยู่บน Blockchain) — ผู้ขายเห็นเฉพาะคำสั่งซื้อที่ส่งถึงเขา
+      </p>
+      <div className="flex justify-end gap-2">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-full px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-200">
+          <Button type="button" variant="ghost" onClick={onCancel}>
             ยกเลิก
-          </button>
+          </Button>
         )}
+        <Button loading={saving}>บันทึกที่อยู่</Button>
       </div>
     </form>
   );

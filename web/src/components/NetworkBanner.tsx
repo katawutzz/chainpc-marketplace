@@ -1,6 +1,7 @@
+import { TriangleAlert } from "lucide-react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { hoodi } from "../lib/chain";
-import { Spinner } from "./ui";
+import { Button } from "./ui";
 
 /** แจ้งเตือนเมื่อ MetaMask ไม่ได้อยู่บน Hoodi — กดเพื่อสลับ (หรือเพิ่มเครือข่ายให้อัตโนมัติ) */
 export function NetworkBanner() {
@@ -10,19 +11,15 @@ export function NetworkBanner() {
   if (!isConnected || chainId === hoodi.id) return null;
 
   return (
-    <div className="bg-amber-100 text-amber-900">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-2 text-sm">
+    <div className="border-b border-amber-200 bg-amber-50 text-amber-900">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-2 text-sm">
+        <TriangleAlert className="h-4 w-4 shrink-0" />
         <span>
-          ⚠️ MetaMask ของคุณไม่ได้อยู่บนเครือข่าย <b>Hoodi Testnet</b> (chain {chainId}) — ซื้อขายไม่ได้จนกว่าจะสลับเครือข่าย
+          MetaMask ของคุณไม่ได้อยู่บนเครือข่าย <b>Hoodi Testnet</b> — ซื้อขายไม่ได้จนกว่าจะสลับเครือข่าย
         </span>
-        <button
-          onClick={() => switchChain({ chainId: hoodi.id })}
-          disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-3 py-1 font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-        >
-          {isPending && <Spinner className="h-3.5 w-3.5" />}
+        <Button size="sm" onClick={() => switchChain({ chainId: hoodi.id })} loading={isPending}>
           สลับไป Hoodi
-        </button>
+        </Button>
         {error && <span className="text-rose-700">{error.message.split("\n")[0]}</span>}
       </div>
     </div>

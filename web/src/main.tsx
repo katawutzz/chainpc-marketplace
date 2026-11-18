@@ -6,7 +6,7 @@ import { WagmiProvider } from "wagmi";
 import { Layout } from "./components/Layout";
 import { AuthProvider } from "./hooks/useAuth";
 import { wagmiConfig } from "./lib/wagmi";
-import { AccountPage } from "./pages/AccountPage";
+import { AccountPage, NotificationsPage } from "./pages/AccountPage";
 import { AdminPage } from "./pages/AdminPage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
@@ -37,6 +37,7 @@ const router = createBrowserRouter([
       { path: "/seller/products/new", element: <ProductFormPage /> },
       { path: "/seller/products/:id/edit", element: <ProductFormPage /> },
       { path: "/account", element: <AccountPage /> },
+      { path: "/account/notifications", element: <NotificationsPage /> },
       { path: "/admin", element: <AdminPage /> },
       { path: "*", element: <NotFound /> },
     ],

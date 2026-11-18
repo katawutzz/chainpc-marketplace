@@ -1,17 +1,29 @@
 import { BaseError, ContractFunctionRevertedError, formatEther } from "viem";
+import {
+  CircuitBoard,
+  Cpu,
+  Gpu,
+  HardDrive,
+  Headphones,
+  Keyboard,
+  MemoryStick,
+  Monitor,
+  PcCase,
+  type LucideIcon,
+} from "lucide-react";
 
 /** หมวดหมู่ (ลำดับตรงกับ enum Category ใน contract) */
-export const CATEGORIES = [
-  { id: 0, label: "PC ประกอบ", icon: "🖥️" },
-  { id: 1, label: "CPU", icon: "🧠" },
-  { id: 2, label: "GPU / การ์ดจอ", icon: "🎮" },
-  { id: 3, label: "RAM", icon: "🧩" },
-  { id: 4, label: "SSD", icon: "💾" },
-  { id: 5, label: "Mainboard", icon: "🔌" },
-  { id: 6, label: "Monitor", icon: "🖵" },
-  { id: 7, label: "Keyboard / Mouse", icon: "⌨️" },
-  { id: 8, label: "Gaming Headset", icon: "🎧" },
-] as const;
+export const CATEGORIES: readonly { id: number; label: string; icon: LucideIcon }[] = [
+  { id: 0, label: "PC ประกอบ", icon: PcCase },
+  { id: 1, label: "CPU", icon: Cpu },
+  { id: 2, label: "การ์ดจอ", icon: Gpu },
+  { id: 3, label: "RAM", icon: MemoryStick },
+  { id: 4, label: "SSD", icon: HardDrive },
+  { id: 5, label: "เมนบอร์ด", icon: CircuitBoard },
+  { id: 6, label: "จอมอนิเตอร์", icon: Monitor },
+  { id: 7, label: "คีย์บอร์ด / เมาส์", icon: Keyboard },
+  { id: 8, label: "หูฟังเกมมิ่ง", icon: Headphones },
+];
 
 export const CONDITIONS = [
   { id: 0, label: "มือหนึ่ง" },
@@ -72,6 +84,9 @@ export function friendlyError(err: unknown): string {
     InvalidStock: "จำนวนสต็อกต้องมากกว่า 0",
     InvalidTracking: "เลขพัสดุต้องมี 1–64 ตัวอักษร",
     CartTooLarge: "ตะกร้ามีสินค้าเกิน 20 รายการ",
+    AccessControlUnauthorizedAccount: "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้ (เฉพาะ Admin)",
+    AccessControlBadConfirmation: "สละสิทธิ์ได้เฉพาะของตัวเอง",
+    InvalidAddress: "address ไม่ถูกต้อง",
     CannotBuyOwnProduct: "ซื้อสินค้าของตัวเองไม่ได้",
     InsufficientStock: "สินค้าในสต็อกไม่พอ",
     ProductUnavailable: "สินค้านี้ไม่เปิดขายแล้ว",

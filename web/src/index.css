@@ -1,29 +1,115 @@
 @import "tailwindcss";
 
-/* ชุดสีของ ChainPC: น้ำเงินเข้ม (navy) + เขียวมิ้นต์ (mint) */
+/* ชุดสีของ ChainPC: ส้ม (brand) บนพื้นเทาอ่อนแบบเว็บช้อปปิ้ง */
 @theme {
   --font-sans: "IBM Plex Sans Thai", ui-sans-serif, system-ui, sans-serif;
 
-  --color-navy-950: #0a1320;
-  --color-navy-900: #0f1b2d;
-  --color-navy-800: #182a43;
-  --color-navy-700: #233a5a;
+  --color-brand-50: #fff4ef;
+  --color-brand-100: #ffe4d8;
+  --color-brand-200: #ffc6ae;
+  --color-brand-300: #ff9f7c;
+  --color-brand-400: #ff7547;
+  --color-brand-500: #f2562a;
+  --color-brand-600: #dc4317;
+  --color-brand-700: #b63612;
 
-  --color-mint-300: #6ee7b7;
-  --color-mint-400: #34d399;
-  --color-mint-500: #10b981;
-  --color-mint-600: #059669;
+  --color-page: #f5f5f5;
+  --color-ink: #222222;
+
+  /* อนิเมชันเบา ๆ — ใช้เป็น class เช่น animate-page, animate-pop */
+  --animate-page: page-in 220ms ease-out both;
+  --animate-pop: pop-in 160ms ease-out both;
+  --animate-toast: toast-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-bump: bump 320ms ease-out;
+  --animate-fade: fade-in 300ms ease-out both;
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes bump {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.3);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* ผู้ใช้ที่ตั้งค่าลดการเคลื่อนไหวในระบบ → ปิดอนิเมชันทั้งหมด */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
   body {
-    @apply bg-slate-100 text-slate-900 antialiased;
+    @apply bg-page text-ink antialiased;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    opacity: 1;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)];
+  }
+  .input {
+    @apply w-full rounded-sm border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-500;
+  }
+  .label {
+    @apply mb-1 block text-sm text-slate-600;
   }
 }

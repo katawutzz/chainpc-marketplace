@@ -102,7 +102,7 @@ export function useMarketplaceTx() {
       const receipt = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: hoodi.id });
       if (receipt.status !== "success") throw new Error("ธุรกรรมล้มเหลว (reverted)");
 
-      toasts.update(id, { kind: "success", message: "สำเร็จ ✓", txHash: hash });
+      toasts.update(id, { kind: "success", message: "สำเร็จ", txHash: hash });
       void triggerSync().then(() => queryClient.invalidateQueries());
       void queryClient.invalidateQueries();
       return receipt;

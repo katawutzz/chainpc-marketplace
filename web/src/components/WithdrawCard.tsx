@@ -1,8 +1,9 @@
+import { HandCoins } from "lucide-react";
 import { useAccount, useReadContract } from "wagmi";
 import { marketplace } from "../lib/chain";
 import { formatEth } from "../lib/format";
 import { useMarketplaceTx } from "../lib/tx";
-import { EthAmount, Spinner } from "./ui";
+import { Button, Price } from "./ui";
 
 /** ยอดเงินที่ถอนได้ (Pull Payment) + ปุ่มถอน */
 export function WithdrawCard({ compact = false }: { compact?: boolean }) {
@@ -26,19 +27,19 @@ export function WithdrawCard({ compact = false }: { compact?: boolean }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-emerald-50 to-sky-50 p-4 ring-1 ring-emerald-200">
-      <div>
-        <p className="text-sm text-slate-600">ยอดเงินที่ถอนได้ (ค่าสินค้าที่ขายได้ / เงินคืน)</p>
-        <EthAmount value={formatEth(pending)} className="text-2xl font-bold text-slate-900" />
+    <div className="card flex flex-wrap items-center justify-between gap-4 border-l-4 border-brand-500 px-5 py-4">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-50 text-brand-500">
+          <HandCoins className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-sm text-slate-500">ยอดเงินที่ถอนได้ (ค่าสินค้าที่ขายได้ / เงินคืน)</p>
+          <Price value={formatEth(pending)} size="lg" />
+        </div>
       </div>
-      <button
-        onClick={withdraw}
-        disabled={pending === 0n || sending}
-        className="inline-flex items-center gap-2 rounded-full bg-mint-500 px-5 py-2 font-semibold text-white hover:bg-mint-600 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {sending && <Spinner className="h-4 w-4" />}
+      <Button onClick={withdraw} disabled={pending === 0n} loading={sending}>
         ถอนเข้า MetaMask
-      </button>
+      </Button>
     </div>
   );
 }
